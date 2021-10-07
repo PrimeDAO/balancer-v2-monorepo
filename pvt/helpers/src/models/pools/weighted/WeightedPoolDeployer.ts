@@ -125,6 +125,24 @@ export default {
         });
         break;
       }
+      case WeightedPoolType.INDEXED_POOL: {
+        result = deploy('v2-pool-weighted/IndexedPool', {
+          args: [
+            vault.address,
+            NAME,
+            SYMBOL,
+            tokens.addresses,
+            weights,
+            assetManagers,
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            TypesConverter.toAddress(owner),
+          ],
+          from,
+        });
+        break;
+      }
       default: {
         result = deploy('v2-pool-weighted/WeightedPool', {
           args: [

@@ -27,6 +27,14 @@ const contractSettings: ContractSettings = {
     version: '0.7.1',
     runs: 200,
   },
+  '@balancer-labs/v2-pool-weighted/contracts/IndexedPoolFactory.sol': {
+    version: '0.7.1',
+    runs: 200,
+  },
+  '@balancer-labs/v2-pool-weighted/contracts/IndexedPool.sol': {
+    version: '0.7.1',
+    runs: 200,
+  },
 };
 
 type SolcConfig = {
