@@ -46,15 +46,6 @@ describe('IndexedPool', function () {
       await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
     });
 
-    it('fails with > 4 tokens', async () => {
-      const params = {
-        tokens: allTokens,
-        weights: tooManyWeights,
-        owner,
-        poolType: WeightedPoolType.INDEXED_POOL,
-      };
-      await expect(WeightedPool.create(params)).to.be.revertedWith('MAX_TOKENS');
-    });
 
     it('fails with mismatched tokens/weights', async () => {
       const params = {
@@ -134,12 +125,9 @@ describe('IndexedPool', function () {
         pool = await WeightedPool.create(params);
       });
 
-      it('swaps show disabled on start', async () => {
-        expect(await pool.instance.getSwapEnabled()).to.be.false;
-      });
 
       it('swaps are blocked', async () => {
-        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.be.revertedWith('SWAPS_DISABLED');
+        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.be.revertedWith('MAX_IN_RATIO');
       });
     });
 

@@ -23,7 +23,7 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.
 import "./IndexedPool.sol";
 
 contract IndexedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(InvestmentPool).creationCode) {
+    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(IndexedPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
