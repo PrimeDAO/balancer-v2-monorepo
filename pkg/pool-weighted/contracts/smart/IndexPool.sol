@@ -20,7 +20,7 @@ import "../BaseWeightedPool.sol";
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
-contract IndexedPool is BaseWeightedPool {
+contract IndexPool is BaseWeightedPool {
     using FixedPoint for uint256;
 
     uint256 private constant _MAX_TOKENS = 50;
