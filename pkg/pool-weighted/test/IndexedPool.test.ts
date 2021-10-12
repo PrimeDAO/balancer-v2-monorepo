@@ -41,7 +41,7 @@ describe('IndexPool', function () {
         tokens: allTokens.subset(1),
         weights: [fp(0.3)],
         owner,
-        poolType: WeightedPoolType.INDEXED_POOL,
+        poolType: WeightedPoolType.INDEX_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
     });
@@ -52,7 +52,7 @@ describe('IndexPool', function () {
         tokens,
         weights: tooManyWeights,
         owner,
-        poolType: WeightedPoolType.INDEXED_POOL,
+        poolType: WeightedPoolType.INDEX_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
     });
@@ -68,7 +68,7 @@ describe('IndexPool', function () {
           tokens = allTokens.subset(numTokens);
 
           pool = await WeightedPool.create({
-            poolType: WeightedPoolType.INDEXED_POOL,
+            poolType: WeightedPoolType.INDEX_POOL,
             tokens,
             weights: weights.slice(0, numTokens),
           });
@@ -98,7 +98,7 @@ describe('IndexPool', function () {
         tokens,
         weights,
         owner,
-        poolType: WeightedPoolType.INDEXED_POOL,
+        poolType: WeightedPoolType.INDEX_POOL,
         fromFactory: true,
       };
       pool = await WeightedPool.create(params);
@@ -119,7 +119,7 @@ describe('IndexPool', function () {
           tokens,
           weights,
           owner,
-          poolType: WeightedPoolType.INDEXED_POOL,
+          poolType: WeightedPoolType.INDEX_POOL,
           swapEnabledOnStart: false,
         };
         pool = await WeightedPool.create(params);
