@@ -19,7 +19,7 @@ async function main() {
 
   await measureDeployment('v2-pool-weighted/InvestmentPoolFactory');
 
-  await measureDeployment('v2-pool-weighted/IndexedPool');
+  await measureDeployment('v2-pool-weighted/IndexPool');
 
   await measureDeployment('v2-pool-weighted/Factory');
 }

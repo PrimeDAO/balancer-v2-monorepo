@@ -125,8 +125,8 @@ export default {
         });
         break;
       }
-      case WeightedPoolType.INDEXED_POOL: {
-        result = deploy('v2-pool-weighted/IndexedPool', {
+      case WeightedPoolType.INDEX_POOL: {
+        result = deploy('v2-pool-weighted/IndexPool', {
           args: [
             vault.address,
             NAME,

@@ -27,11 +27,11 @@ const contractSettings: ContractSettings = {
     version: '0.7.1',
     runs: 200,
   },
-  '@balancer-labs/v2-pool-weighted/contracts/IndexedPoolFactory.sol': {
+  '@balancer-labs/v2-pool-weighted/contracts/IndexPoolFactory.sol': {
     version: '0.7.1',
     runs: 200,
   },
-  '@balancer-labs/v2-pool-weighted/contracts/IndexedPool.sol': {
+  '@balancer-labs/v2-pool-weighted/contracts/IndexPool.sol': {
     version: '0.7.1',
     runs: 200,
   },
