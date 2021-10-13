@@ -40,7 +40,6 @@ contract IndexPool is BaseWeightedPool {
 
     uint256[] internal _normalizedWeights;
 
-
     constructor(
         IVault vault,
         string memory name,
@@ -93,9 +92,14 @@ contract IndexPool is BaseWeightedPool {
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _tokens = tokens;
 
-        for(uint i = 0; i < numTokens; i++){
+        for (uint256 i = 0; i < numTokens; i++) {
             scalingFactors.push(_computeScalingFactor(tokens[i]));
         }
+    }
+
+    function reweighTokens(address[] memory addresses, uint96[] memory weights) public view returns (uint256) {
+        require(addresses.length == weights.length, "INPUT_LENGTH_MISMATCH");
+        return 5;
     }
 
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
@@ -143,7 +147,6 @@ contract IndexPool is BaseWeightedPool {
         }
 
         _revert(Errors.INVALID_TOKEN);
-
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {

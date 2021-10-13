@@ -636,4 +636,8 @@ export default class WeightedPool {
     const result = await this.instance.getCollectedManagementFees();
     return { amounts: result.collectedFees, tokenAddresses: result.tokens };
   }
+
+  async reweighTokens(tokens: string[], desiredWeights: BigNumberish[]): Promise<number> {
+    return await this.instance.reweighTokens(tokens, desiredWeights);
+  }
 }

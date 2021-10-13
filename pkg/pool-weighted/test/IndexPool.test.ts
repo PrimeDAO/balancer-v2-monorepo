@@ -46,7 +46,6 @@ describe('IndexPool', function () {
       await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
     });
 
-
     it('fails with mismatched tokens/weights', async () => {
       const params = {
         tokens,
@@ -125,11 +124,31 @@ describe('IndexPool', function () {
         pool = await WeightedPool.create(params);
       });
 
-
       it('swaps are blocked', async () => {
         await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.be.revertedWith('MAX_IN_RATIO');
       });
     });
+  });
 
+  describe.only('# reweighTokens', () => {
+    sharedBeforeEach('deploy pool', async () => {
+      const params = {
+        tokens,
+        weights,
+        owner,
+        poolType: WeightedPoolType.INDEX_POOL,
+        swapEnabledOnStart: false,
+      };
+      pool = await WeightedPool.create(params);
+    });
+
+    context('when input array lengths differ', () => {
+      it('reverts: "INPUT_LENGTH_MISMATCH"', async () => {
+        const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
+        const twoWeights = [fp(0.5), fp(0.5)];
+
+        await expect(pool.reweighTokens(threeAddresses, twoWeights)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+      });
+    });
   });
 });
