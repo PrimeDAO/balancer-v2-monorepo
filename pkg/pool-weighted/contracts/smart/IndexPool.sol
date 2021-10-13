@@ -114,7 +114,7 @@ contract IndexPool is BaseWeightedPool {
         address[] memory tokens,
         uint96[] memory normalizedWeights,
         uint256[] memory minimumBalances
-    ) public {
+    ) external {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
         InputHelpers.ensureInputLengthMatch(numTokens, minimumBalances.length);
