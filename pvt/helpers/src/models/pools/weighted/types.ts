@@ -13,6 +13,7 @@ export enum WeightedPoolType {
   WEIGHTED_POOL_2TOKENS,
   LIQUIDITY_BOOTSTRAPPING_POOL,
   INVESTMENT_POOL,
+  INDEX_POOL,
 }
 
 export type RawWeightedPoolDeployment = {
