@@ -119,13 +119,15 @@ contract IndexPool is BaseWeightedPool {
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
         InputHelpers.ensureInputLengthMatch(numTokens, minimumBalances.length);
 
-        // uint256 normalizedSum = 0;
-        // for (uint8 i = 0; i < numTokens; i++) {
-        //     uint256 normalizedWeight = normalizedWeights[i];
+        uint256 normalizedSum = 0;
+        for (uint8 i = 0; i < numTokens; i++) {
+            uint256 normalizedWeight = normalizedWeights[i];
+            uint256 minimumBalance = minimumBalances[i];
 
-        //     normalizedSum = normalizedSum.add(normalizedWeight);
-        // }
-        // _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
+            _require(minimumBalance != 0, Errors.INVALID_ZERO_MINIMUM_BALANCE);
+            normalizedSum = normalizedSum.add(normalizedWeight);
+        }
+        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
     }
 
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {

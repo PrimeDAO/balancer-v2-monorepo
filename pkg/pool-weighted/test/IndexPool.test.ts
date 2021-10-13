@@ -207,15 +207,28 @@ describe('IndexPool', function () {
       });
     });
 
-    // context('when weights are not normalized', () => {
-    //   it('reverts: "INPUT_LENGTH_MISMATCH"', async () => {
-    //     const twoAddresses = allTokens.subset(2).tokens.map((token) => token.address);
-    //     const denormalizedWeights = [fp(0.5), fp(0.5)];
+    context('when weights are not normalized', () => {
+      it('reverts: "NORMALIZED_WEIGHT_INVARIANT"', async () => {
+        const addresses = allTokens.subset(2).tokens.map((token) => token.address);
+        const denormalizedWeights = [fp(0.5), fp(0.3)];
+        const minimumBalances = [1000, 2000];
 
-    //     await expect(pool.reweighTokens(addresses, denormalizedWeights)).to.be.revertedWith(
-    //       'NORMALIZED_WEIGHT_INVARIANT'
-    //     );
-    //   });
-    // });
+        await expect(pool.reindexTokens(addresses, denormalizedWeights, minimumBalances)).to.be.revertedWith(
+          'NORMALIZED_WEIGHT_INVARIANT'
+        );
+      });
+    });
+
+    context('when a minimum balance is zero', () => {
+      it('reverts: "INVALID_ZERO_MINIMUM_BALANCE"', async () => {
+        const addresses = allTokens.subset(2).tokens.map((token) => token.address);
+        const weights = [fp(0.5), fp(0.5)];
+        const invalidMinimumBalances = [1000, 0];
+
+        await expect(pool.reindexTokens(addresses, weights, invalidMinimumBalances)).to.be.revertedWith(
+          'INVALID_ZERO_MINIMUM_BALANCE'
+        );
+      });
+    });
   });
 });
