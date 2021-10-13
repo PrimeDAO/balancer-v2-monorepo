@@ -11,6 +11,10 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import { range } from 'lodash';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
 
+const indexErrorCodes = {
+  INVALID_ZERO_MINIMUM_BALANCE: 'IDX#001',
+};
+
 describe('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress;
 
@@ -226,7 +230,7 @@ describe('IndexPool', function () {
         const invalidMinimumBalances = [1000, 0];
 
         await expect(pool.reindexTokens(addresses, weights, invalidMinimumBalances)).to.be.revertedWith(
-          'INVALID_ZERO_MINIMUM_BALANCE'
+          indexErrorCodes.INVALID_ZERO_MINIMUM_BALANCE
         );
       });
     });
