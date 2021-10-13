@@ -97,8 +97,12 @@ contract IndexPool is BaseWeightedPool {
         }
     }
 
-    function reweighTokens(address[] memory addresses, uint96[] memory weights) public view returns (uint256) {
-        require(addresses.length == weights.length, "INPUT_LENGTH_MISMATCH");
+    function reweighTokens(address[] memory addresses, uint96[] memory normalizedWeights)
+        public
+        view
+        returns (uint256)
+    {
+        InputHelpers.ensureInputLengthMatch(addresses.length, normalizedWeights.length);
         return 5;
     }
 
