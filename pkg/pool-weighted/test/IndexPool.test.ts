@@ -130,7 +130,7 @@ describe('IndexPool', function () {
     });
   });
 
-  describe.only('# reweighTokens', () => {
+  describe('#reweighTokens', () => {
     sharedBeforeEach('deploy pool', async () => {
       const params = {
         tokens,
@@ -161,5 +161,61 @@ describe('IndexPool', function () {
         );
       });
     });
+  });
+
+  describe.only('#reindexTokens', () => {
+    sharedBeforeEach('deploy pool', async () => {
+      const params = {
+        tokens,
+        weights,
+        owner,
+        poolType: WeightedPoolType.INDEX_POOL,
+        swapEnabledOnStart: false,
+      };
+      pool = await WeightedPool.create(params);
+    });
+
+    context('when input array lengths differ', () => {
+      it('reverts "INPUT_LENGTH_MISMATCH" if lengths of tokens and weights differ', async () => {
+        const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
+        const twoWeights = [fp(0.5), fp(0.5)];
+        const threeMinimumBalances = [1000, 2000, 3000];
+
+        await expect(pool.reindexTokens(threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
+          'INPUT_LENGTH_MISMATCH'
+        );
+      });
+
+      it('reverts "INPUT_LENGTH_MISMATCH" if lengths of tokens and minimum balances differ', async () => {
+        const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
+        const threeWeights = [fp(0.4), fp(0.5), fp(0.1)];
+        const twoMinimumBalances = [1000, 2000];
+
+        await expect(pool.reindexTokens(threeAddresses, threeWeights, twoMinimumBalances)).to.be.revertedWith(
+          'INPUT_LENGTH_MISMATCH'
+        );
+      });
+
+      it('reverts "INPUT_LENGTH_MISMATCH" if lengths of weights and minimum balances differ', async () => {
+        const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
+        const twoWeights = [fp(0.5), fp(0.5)];
+        const threeMinimumBalances = [1000, 2000, 3000];
+
+        await expect(pool.reindexTokens(threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
+          'INPUT_LENGTH_MISMATCH'
+        );
+      });
+    });
+
+    // context('when weights are not normalized', () => {
+    //   it('reverts: "INPUT_LENGTH_MISMATCH"', async () => {
+    //     const twoAddresses = allTokens.subset(2).tokens.map((token) => token.address);
+    //     const denormalizedWeights = [fp(0.5), fp(0.5)];
+
+    //     await expect(pool.reweighTokens(addresses, denormalizedWeights)).to.be.revertedWith(
+    //       'NORMALIZED_WEIGHT_INVARIANT'
+    //     );
+    //   });
+    // });
   });
 });
