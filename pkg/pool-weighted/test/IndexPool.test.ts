@@ -150,5 +150,16 @@ describe('IndexPool', function () {
         await expect(pool.reweighTokens(threeAddresses, twoWeights)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
       });
     });
+
+    context('when weights are not normalized', () => {
+      it('reverts: "INPUT_LENGTH_MISMATCH"', async () => {
+        const addresses = allTokens.subset(2).tokens.map((token) => token.address);
+        const denormalizedWeights = [fp(0.5), fp(0.3)];
+
+        await expect(pool.reweighTokens(addresses, denormalizedWeights)).to.be.revertedWith(
+          'NORMALIZED_WEIGHT_INVARIANT'
+        );
+      });
+    });
   });
 });

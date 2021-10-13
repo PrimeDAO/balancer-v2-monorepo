@@ -97,13 +97,17 @@ contract IndexPool is BaseWeightedPool {
         }
     }
 
-    function reweighTokens(address[] memory addresses, uint96[] memory normalizedWeights)
-        public
-        view
-        returns (uint256)
-    {
-        InputHelpers.ensureInputLengthMatch(addresses.length, normalizedWeights.length);
-        return 5;
+    function reweighTokens(address[] memory tokens, uint96[] memory normalizedWeights) public view returns (uint256) {
+        uint256 numTokens = tokens.length;
+        InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
+
+        uint256 normalizedSum = 0;
+        for (uint8 i = 0; i < numTokens; i++) {
+            uint256 normalizedWeight = normalizedWeights[i];
+
+            normalizedSum = normalizedSum.add(normalizedWeight);
+        }
+        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
     }
 
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
