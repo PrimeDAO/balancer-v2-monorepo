@@ -124,7 +124,7 @@ contract IndexPool is BaseWeightedPool {
             uint256 normalizedWeight = normalizedWeights[i];
             uint256 minimumBalance = minimumBalances[i];
 
-            require(minimumBalance != 0, "IDX#001");
+            require(minimumBalance != 0, "Invalid zero minimum balance");
             normalizedSum = normalizedSum.add(normalizedWeight);
         }
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
