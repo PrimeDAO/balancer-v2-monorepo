@@ -11,7 +11,7 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import { range } from 'lodash';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
 
-describe('IndexPool', function () {
+describe.only('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress;
 
   before('setup signers', async () => {
@@ -163,7 +163,7 @@ describe('IndexPool', function () {
     });
   });
 
-  describe.only('#reindexTokens', () => {
+  describe('#reindexTokens', () => {
     sharedBeforeEach('deploy pool', async () => {
       const params = {
         tokens,
