@@ -92,7 +92,7 @@ contract IndexPool is BaseWeightedPool {
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _tokens = tokens;
 
-        for (uint256 i = 0; i < numTokens; i++) {
+        for (uint8 i = 0; i < numTokens; i++) {
             scalingFactors.push(_computeScalingFactor(tokens[i]));
         }
     }
@@ -116,8 +116,7 @@ contract IndexPool is BaseWeightedPool {
         uint256[] memory minimumBalances
     ) external {
         uint256 numTokens = tokens.length;
-        InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
-        InputHelpers.ensureInputLengthMatch(numTokens, minimumBalances.length);
+        InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length, minimumBalances.length);
 
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; i++) {
