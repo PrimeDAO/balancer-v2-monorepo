@@ -103,9 +103,7 @@ contract IndexPool is BaseWeightedPool {
 
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; i++) {
-            uint256 normalizedWeight = normalizedWeights[i];
-
-            normalizedSum = normalizedSum.add(normalizedWeight);
+            normalizedSum = normalizedSum.add(normalizedWeights[i]);
         }
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
     }
@@ -120,11 +118,8 @@ contract IndexPool is BaseWeightedPool {
 
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; i++) {
-            uint256 normalizedWeight = normalizedWeights[i];
-            uint256 minimumBalance = minimumBalances[i];
-
-            require(minimumBalance != 0, "Invalid zero minimum balance");
-            normalizedSum = normalizedSum.add(normalizedWeight);
+            require(minimumBalances[i] != 0, "Invalid zero minimum balance");
+            normalizedSum = normalizedSum.add(normalizedWeights[i]);
         }
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
     }
