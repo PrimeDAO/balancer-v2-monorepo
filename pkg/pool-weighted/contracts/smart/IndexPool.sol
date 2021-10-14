@@ -97,7 +97,7 @@ contract IndexPool is BaseWeightedPool {
         }
     }
 
-    function reweighTokens(address[] calldata tokens, uint96[] calldata desiredWeights) public {
+    function reweighTokens(address[] calldata tokens, uint96[] calldata desiredWeights) public authenticate {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length);
 
@@ -112,7 +112,7 @@ contract IndexPool is BaseWeightedPool {
         address[] calldata tokens,
         uint96[] calldata desiredWeights,
         uint256[] calldata minimumBalances
-    ) external {
+    ) external authenticate {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length, minimumBalances.length);
 
