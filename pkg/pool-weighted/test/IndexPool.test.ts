@@ -152,7 +152,7 @@ describe('IndexPool', function () {
     });
 
     context('when weights are not normalized', () => {
-      it('reverts: "INPUT_LENGTH_MISMATCH"', async () => {
+      it('reverts: "NORMALIZED_WEIGHT_INVARIANT"', async () => {
         const addresses = allTokens.subset(2).tokens.map((token) => token.address);
         const denormalizedWeights = [fp(0.5), fp(0.3)];
 
