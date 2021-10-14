@@ -40,7 +40,6 @@ contract IndexPool is BaseWeightedPool {
 
     uint256[] internal _normalizedWeights;
 
-
     constructor(
         IVault vault,
         string memory name,
@@ -93,9 +92,36 @@ contract IndexPool is BaseWeightedPool {
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _tokens = tokens;
 
-        for(uint i = 0; i < numTokens; i++){
+        for (uint8 i = 0; i < numTokens; i++) {
             scalingFactors.push(_computeScalingFactor(tokens[i]));
         }
+    }
+
+    function reweighTokens(address[] calldata tokens, uint96[] calldata desiredWeights) public {
+        uint256 numTokens = tokens.length;
+        InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length);
+
+        uint256 normalizedSum = 0;
+        for (uint8 i = 0; i < numTokens; i++) {
+            normalizedSum = normalizedSum.add(desiredWeights[i]);
+        }
+        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
+    }
+
+    function reindexTokens(
+        address[] calldata tokens,
+        uint96[] calldata desiredWeights,
+        uint256[] calldata minimumBalances
+    ) external {
+        uint256 numTokens = tokens.length;
+        InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length, minimumBalances.length);
+
+        uint256 normalizedSum = 0;
+        for (uint8 i = 0; i < numTokens; i++) {
+            require(minimumBalances[i] != 0, "Invalid zero minimum balance");
+            normalizedSum = normalizedSum.add(desiredWeights[i]);
+        }
+        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
     }
 
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
@@ -143,7 +169,6 @@ contract IndexPool is BaseWeightedPool {
         }
 
         _revert(Errors.INVALID_TOKEN);
-
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
