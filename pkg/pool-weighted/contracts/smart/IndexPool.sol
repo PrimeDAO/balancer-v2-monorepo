@@ -97,7 +97,7 @@ contract IndexPool is BaseWeightedPool {
         }
     }
 
-    function reweighTokens(address[] memory tokens, uint96[] memory desiredWeights) public {
+    function reweighTokens(address[] calldata tokens, uint96[] calldata desiredWeights) public {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length);
 
@@ -109,9 +109,9 @@ contract IndexPool is BaseWeightedPool {
     }
 
     function reindexTokens(
-        address[] memory tokens,
-        uint96[] memory desiredWeights,
-        uint256[] memory minimumBalances
+        address[] calldata tokens,
+        uint96[] calldata desiredWeights,
+        uint256[] calldata minimumBalances
     ) external {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length, minimumBalances.length);
