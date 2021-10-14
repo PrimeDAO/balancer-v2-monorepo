@@ -97,29 +97,29 @@ contract IndexPool is BaseWeightedPool {
         }
     }
 
-    function reweighTokens(address[] memory tokens, uint96[] memory normalizedWeights) public {
+    function reweighTokens(address[] memory tokens, uint96[] memory desiredWeights) public {
         uint256 numTokens = tokens.length;
-        InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
+        InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length);
 
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; i++) {
-            normalizedSum = normalizedSum.add(normalizedWeights[i]);
+            normalizedSum = normalizedSum.add(desiredWeights[i]);
         }
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
     }
 
     function reindexTokens(
         address[] memory tokens,
-        uint96[] memory normalizedWeights,
+        uint96[] memory desiredWeights,
         uint256[] memory minimumBalances
     ) external {
         uint256 numTokens = tokens.length;
-        InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length, minimumBalances.length);
+        InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length, minimumBalances.length);
 
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; i++) {
             require(minimumBalances[i] != 0, "Invalid zero minimum balance");
-            normalizedSum = normalizedSum.add(normalizedWeights[i]);
+            normalizedSum = normalizedSum.add(desiredWeights[i]);
         }
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
     }
