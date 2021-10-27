@@ -75,7 +75,6 @@ describe('IndexPool', function () {
 
         it('sets token weights', async () => {
           const normalizedWeights = await pool.getNormalizedWeights();
-          console.log(normalizedWeights);
 
           for (let i = 0; i < numTokens; i++) {
             expect(normalizedWeights[i]).to.equalWithError(pool.normalizedWeights[i], 0.0001);
