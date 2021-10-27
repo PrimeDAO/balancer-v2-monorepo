@@ -142,12 +142,22 @@ describe('IndexPool', function () {
       pool = await WeightedPool.create(params);
     });
 
+    context('when not called by controller of contract', () => {
+      it('reverts: "ERR_NOT_CONTROLLER"', async () => {
+        const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
+        const normalizedWeights = [fp(0.5), fp(0.3), fp(0.2)];
+
+        await expect(pool.reweighTokens(other, threeAddresses, normalizedWeights)).to.be.revertedWith(
+          'ERR_NOT_CONTROLLER'
+        );
+      });
+    });
     context('when input array lengths differ', () => {
       it('reverts: "INPUT_LENGTH_MISMATCH"', async () => {
         const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
         const twoWeights = [fp(0.5), fp(0.5)];
 
-        await expect(pool.reweighTokens(threeAddresses, twoWeights)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+        await expect(pool.reweighTokens(owner, threeAddresses, twoWeights)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
       });
     });
 
@@ -156,7 +166,7 @@ describe('IndexPool', function () {
         const addresses = allTokens.subset(2).tokens.map((token) => token.address);
         const denormalizedWeights = [fp(0.5), fp(0.3)];
 
-        await expect(pool.reweighTokens(addresses, denormalizedWeights)).to.be.revertedWith(
+        await expect(pool.reweighTokens(owner, addresses, denormalizedWeights)).to.be.revertedWith(
           'NORMALIZED_WEIGHT_INVARIANT'
         );
       });
@@ -175,13 +185,24 @@ describe('IndexPool', function () {
       pool = await WeightedPool.create(params);
     });
 
+    context('when not called by controller of contract', () => {
+      it('reverts: "ERR_NOT_CONTROLLER"', async () => {
+        const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
+        const twoWeights = [fp(0.5), fp(0.5)];
+        const threeMinimumBalances = [1000, 2000, 3000];
+
+        await expect(pool.reindexTokens(other, threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
+          'ERR_NOT_CONTROLLER'
+        );
+      });
+    });
     context('when input array lengths differ', () => {
       it('reverts "INPUT_LENGTH_MISMATCH" if lengths of tokens and weights differ', async () => {
         const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
         const twoWeights = [fp(0.5), fp(0.5)];
         const threeMinimumBalances = [1000, 2000, 3000];
 
-        await expect(pool.reindexTokens(threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
+        await expect(pool.reindexTokens(owner, threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
           'INPUT_LENGTH_MISMATCH'
         );
       });
@@ -191,7 +212,7 @@ describe('IndexPool', function () {
         const threeWeights = [fp(0.4), fp(0.5), fp(0.1)];
         const twoMinimumBalances = [1000, 2000];
 
-        await expect(pool.reindexTokens(threeAddresses, threeWeights, twoMinimumBalances)).to.be.revertedWith(
+        await expect(pool.reindexTokens(owner, threeAddresses, threeWeights, twoMinimumBalances)).to.be.revertedWith(
           'INPUT_LENGTH_MISMATCH'
         );
       });
@@ -201,7 +222,7 @@ describe('IndexPool', function () {
         const twoWeights = [fp(0.5), fp(0.5)];
         const threeMinimumBalances = [1000, 2000, 3000];
 
-        await expect(pool.reindexTokens(threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
+        await expect(pool.reindexTokens(owner, threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
           'INPUT_LENGTH_MISMATCH'
         );
       });
@@ -213,7 +234,7 @@ describe('IndexPool', function () {
         const denormalizedWeights = [fp(0.5), fp(0.3)];
         const minimumBalances = [1000, 2000];
 
-        await expect(pool.reindexTokens(addresses, denormalizedWeights, minimumBalances)).to.be.revertedWith(
+        await expect(pool.reindexTokens(owner, addresses, denormalizedWeights, minimumBalances)).to.be.revertedWith(
           'NORMALIZED_WEIGHT_INVARIANT'
         );
       });
@@ -225,7 +246,7 @@ describe('IndexPool', function () {
         const weights = [fp(0.5), fp(0.5)];
         const invalidMinimumBalances = [1000, 0];
 
-        await expect(pool.reindexTokens(addresses, weights, invalidMinimumBalances)).to.be.revertedWith(
+        await expect(pool.reindexTokens(owner, addresses, weights, invalidMinimumBalances)).to.be.revertedWith(
           'Invalid zero minimum balance'
         );
       });

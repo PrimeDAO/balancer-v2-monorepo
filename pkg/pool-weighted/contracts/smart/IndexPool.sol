@@ -23,11 +23,23 @@ import "../BaseWeightedPool.sol";
 contract IndexPool is BaseWeightedPool {
     using FixedPoint for uint256;
 
+    /* ==========  Modifiers  ========== */
+
+    modifier _control_ {
+        require(msg.sender == _controller, "ERR_NOT_CONTROLLER");
+        _;
+    }
+
+    /* ==========  Storage  ========== */
+
     uint256 private constant _MAX_TOKENS = 50;
 
     uint256 private immutable _totalTokens;
 
     IERC20[] internal _tokens;
+
+    // Account with CONTROL role.
+    address internal _controller;
 
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
@@ -88,6 +100,8 @@ contract IndexPool is BaseWeightedPool {
 
         _maxWeightTokenIndex = maxWeightTokenIndex;
 
+        _controller = owner;
+
         _normalizedWeights = normalizedWeights;
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _tokens = tokens;
@@ -97,7 +111,7 @@ contract IndexPool is BaseWeightedPool {
         }
     }
 
-    function reweighTokens(address[] calldata tokens, uint96[] calldata desiredWeights) public authenticate {
+    function reweighTokens(address[] calldata tokens, uint96[] calldata desiredWeights) public _control_ {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length);
 
@@ -112,7 +126,7 @@ contract IndexPool is BaseWeightedPool {
         address[] calldata tokens,
         uint96[] calldata desiredWeights,
         uint256[] calldata minimumBalances
-    ) external authenticate {
+    ) external _control_ {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length, minimumBalances.length);
 
