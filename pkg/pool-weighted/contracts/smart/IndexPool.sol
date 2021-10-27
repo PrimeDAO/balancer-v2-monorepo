@@ -323,9 +323,4 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
         return scalingFactors;
     }
-
-
-
-
-
 }
