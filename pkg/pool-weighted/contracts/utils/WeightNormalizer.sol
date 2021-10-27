@@ -30,13 +30,26 @@ contract WeightNormalizer {
             }
         }
 
-        bool isUpwardAdustment = totalWeight > BONE;
-        uint256 denormWeightDiff = isUpwardAdustment ? totalWeight - BONE : BONE - totalWeight;
+        /* 
+            isDownScale is true if the base weights need to be scaled down
+            example: pool with 80/20 is transformed to ?/?/1 => totalWeight = 101
+            here the weights of the existing tokens need to be scaled down 
+        */
+        bool isDownScale = totalWeight > BONE;
+        uint256 denormWeightDiff = isDownScale ? totalWeight - BONE : BONE - totalWeight;
 
         for (uint256 i = 0; i < numberTokens; i++) {
+            // if fixedWeight is zero we can assume we are dealing with a token whose weight needs to be adjusted
             if (_fixedWeights[i] == 0) {
+                /*
+                    the logic is to derive the adjustmentAmount is:
+                    (weight of base token / combined weight of all base tokens) *
+                    (absolute diff between hundred and combined weights of base and fixed tokens / hundred)
+                */
                 uint256 adjustmentAmount = _bdiv(_baseWeights[i] * denormWeightDiff, totalWeightBaseTokens * BONE);
-                normalizedWeights[i] = isUpwardAdustment
+
+                // if base tokens needs to be scaled down we subtract the adjustmentAmount, else we add it
+                normalizedWeights[i] = isDownScale
                     ? _baseWeights[i] - adjustmentAmount
                     : _baseWeights[i] + adjustmentAmount;
             } else {
