@@ -8,7 +8,7 @@ const toBnPercentage = (decimalPercentage: number): BigNumber => {
   return BigNumber.from(normalizedWeight.toString());
 };
 
-describe('WeightNormalizer', function () {
+describe.only('WeightNormalizer', function () {
   let normalizerInstance: Contract;
 
   beforeEach(async () => {
@@ -26,6 +26,17 @@ describe('WeightNormalizer', function () {
         const expectedWeights = [toBnPercentage(0.792), toBnPercentage(0.198), toBnPercentage(0.01)];
         const receivedWeights = await normalizerInstance.normalizeInterpolated(baseWeights, fixedWeights);
 
+        expect(receivedWeights).to.eql(expectedWeights);
+      });
+    });
+
+    describe('with 60/30/10 pool to be transferred in a ?/?/1 pool', () => {
+      const baseWeights = [toBnPercentage(0.6), toBnPercentage(0.3), toBnPercentage(0.1)];
+      const fixedWeights = [0, 0, toBnPercentage(0.01)];
+
+      it('returns the correct interpolated normalized weights', async () => {
+        const expectedWeights = [toBnPercentage(0.66), toBnPercentage(0.33), toBnPercentage(0.01)];
+        const receivedWeights = await normalizerInstance.normalizeInterpolated(baseWeights, fixedWeights);
         expect(receivedWeights).to.eql(expectedWeights);
       });
     });

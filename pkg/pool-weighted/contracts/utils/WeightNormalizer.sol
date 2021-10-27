@@ -19,18 +19,29 @@ contract WeightNormalizer {
         // identify tokens to be added
         bool[] memory areFixedTokens = new bool[](numberTokens);
         uint256 totalWeightFixedTokens;
+        uint256 totalWeightBaseTokens;
+        uint256 denormalizedTotalWeight;
 
         for (uint256 i = 0; i < numberTokens; i++) {
             if (_fixedWeights[i] != 0) {
                 totalWeightFixedTokens += _fixedWeights[i];
+                denormalizedTotalWeight += _fixedWeights[i];
                 areFixedTokens[i] = true;
+            } else {
+                denormalizedTotalWeight += _baseWeights[i];
+                totalWeightBaseTokens += _baseWeights[i];
             }
         }
 
+        bool isUpwardAdustment = denormalizedTotalWeight > BONE;
+        uint256 delta = isUpwardAdustment ? denormalizedTotalWeight - BONE : BONE - denormalizedTotalWeight;
+
         for (uint256 i = 0; i < numberTokens; i++) {
             if (!areFixedTokens[i]) {
-                uint256 adjustmentAmount = _bdiv(_baseWeights[i] * totalWeightFixedTokens, BONE**2);
-                normalizedWeights[i] = _baseWeights[i] - adjustmentAmount;
+                uint256 adjustmentAmount = _bdiv(_baseWeights[i] * delta, totalWeightBaseTokens * BONE);
+                normalizedWeights[i] = isUpwardAdustment
+                    ? _baseWeights[i] - adjustmentAmount
+                    : _baseWeights[i] + adjustmentAmount;
             } else {
                 normalizedWeights[i] = _fixedWeights[i];
             }
