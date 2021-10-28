@@ -3,6 +3,13 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from '@ethersproject/contracts';
 
+const isNormalized = (weights: BigNumber[]): boolean => {
+  const HUNDRED_PERCENT = BigNumber.from(10).pow(18);
+
+  const totalWeight = weights.reduce((acc, curr) => acc.add(curr), BigNumber.from(0));
+  return totalWeight.eq(HUNDRED_PERCENT);
+};
+
 const toBnPercentage = (decimalPercentage: number): BigNumber => {
   const normalizedWeight = decimalPercentage * 10e17;
   return BigNumber.from(normalizedWeight.toString());
@@ -31,7 +38,7 @@ const getExpectedWeights = (baseWeights: number[], fixWeights: number[]): BigNum
   return finalWeights;
 };
 
-describe.only('IndexPoolUtils', function () {
+describe('IndexPoolUtils', function () {
   let normalizerInstance: Contract;
 
   beforeEach(async () => {
@@ -41,19 +48,27 @@ describe.only('IndexPoolUtils', function () {
   });
 
   describe('#normalizeInterpolated', () => {
+    let expectedWeights: BigNumber[], receivedWeights: BigNumber[];
+
     describe('with denormalized weights greater than one', () => {
       describe('with 80/20 pool and new token to be added w/ 1%', () => {
         const baseWeights = [0.8, 0.2, 0];
         const fixedWeights = [0, 0, 0.01];
 
-        it('returns the correct interpolated normalized weights', async () => {
-          const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
-          const receivedWeights = await normalizerInstance.normalizeInterpolated(
+        beforeEach(async () => {
+          expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+          receivedWeights = await normalizerInstance.normalizeInterpolated(
             baseWeights.map((w) => toBnPercentage(w)),
             fixedWeights.map((w) => toBnPercentage(w))
           );
+        });
 
-          expect(receivedWeights).to.eql(expectedWeights);
+        it('returns the correct weights', async () => {
+          expect(receivedWeights).to.be.closeTo;
+        });
+
+        it('returns normalized weights', async () => {
+          expect(isNormalized(receivedWeights)).to.be.true;
         });
       });
 
@@ -61,14 +76,37 @@ describe.only('IndexPoolUtils', function () {
         const baseWeights = [0.8, 0.2, 0, 0];
         const fixedWeights = [0, 0, 0.01, 0.01];
 
-        it('returns the correct interpolated normalized weights', async () => {
-          const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
-          const receivedWeights = await normalizerInstance.normalizeInterpolated(
+        beforeEach(async () => {
+          expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+          receivedWeights = await normalizerInstance.normalizeInterpolated(
             baseWeights.map((w) => toBnPercentage(w)),
             fixedWeights.map((w) => toBnPercentage(w))
           );
+        });
 
+        it('returns the correct weights', async () => {
           expect(receivedWeights).to.eql(expectedWeights);
+        });
+
+        it('returns normalized weights', async () => {
+          expect(isNormalized(receivedWeights)).to.be.true;
+        });
+      });
+
+      describe.only('with crazy pool', () => {
+        const baseWeights = [0.341, 0.362, 0.123412, 0.173588];
+        const fixedWeights = [0, 0, 0.01, 0.01];
+
+        beforeEach(async () => {
+          expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+          receivedWeights = await normalizerInstance.normalizeInterpolated(
+            baseWeights.map((w) => toBnPercentage(w)),
+            fixedWeights.map((w) => toBnPercentage(w))
+          );
+        });
+
+        it('returns normalized weights', async () => {
+          expect(isNormalized(receivedWeights)).to.be.true;
         });
       });
     });
@@ -78,14 +116,20 @@ describe.only('IndexPoolUtils', function () {
         const baseWeights = [0.6, 0.3, 0.1];
         const fixedWeights = [0, 0, 0.01];
 
-        it('returns the correct interpolated normalized weights', async () => {
-          const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
-          const receivedWeights = await normalizerInstance.normalizeInterpolated(
+        beforeEach(async () => {
+          expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+          receivedWeights = await normalizerInstance.normalizeInterpolated(
             baseWeights.map((w) => toBnPercentage(w)),
             fixedWeights.map((w) => toBnPercentage(w))
           );
+        });
 
+        it('returns the correct weights', async () => {
           expect(receivedWeights).to.eql(expectedWeights);
+        });
+
+        it('returns normalized weights', async () => {
+          expect(isNormalized(receivedWeights)).to.be.true;
         });
       });
     });
