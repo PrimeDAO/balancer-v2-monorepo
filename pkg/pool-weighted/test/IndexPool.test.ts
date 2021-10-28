@@ -244,8 +244,8 @@ describe('IndexPool', function () {
       pool = await WeightedPool.create(params);
     });
 
-    context('when input array lengths differ', () => {
-      it('reverts: "INPUT_LENGTH_MISMATCH"', async () => {
+    context('when weights are being changed', () => {
+      it('Call of getGradualWeightUpdateParams correctly displays the result', async () => {
         const fiveWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
         const ret = await pool.reweighTokens(allTokens.subset(4).tokens.map((token) => token.address), fiveWeights);
         console.log(ret);
