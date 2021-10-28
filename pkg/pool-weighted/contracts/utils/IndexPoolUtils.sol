@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.7.0;
 
-contract WeightNormalizer {
+contract IndexPoolUtils {
     uint8 public constant PRECISION = 18;
     uint256 public constant BONE = 10**PRECISION;
 
