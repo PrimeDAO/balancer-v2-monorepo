@@ -114,6 +114,32 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     /**
+     * @dev Return start time, end time, and endWeights as an array.
+     * Current weights should be retrieved via `getNormalizedWeights()`.
+     */
+    function getGradualWeightUpdateParams()
+    external
+    view
+    returns (
+        uint256 startTime,
+        uint256 endTime,
+        uint256[] memory endWeights
+    )
+    {
+            // Load current pool state from storage
+            bytes32 poolState = _poolState;
+
+            startTime = poolState.decodeUint32(_START_TIME_OFFSET);
+            endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+            uint256 totalTokens = _getTotalTokens();
+            endWeights = new uint256[](totalTokens);
+
+            for (uint256 i = 0; i < totalTokens; i++) {
+                endWeights[i] = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).uncompress16();
+            }
+    }
+
+    /**
      * @dev Returns a fixed-point number representing how far along the current weight change is, where 0 means the
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
@@ -172,11 +198,12 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
      * @dev Schedule a gradual weight change, from the current weights to the given endWeights,
      * over startTime to endTime
      */
+//    TODO: has to be authenticate
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
         uint256[] memory endWeights
-    ) internal authenticate whenNotPaused nonReentrant {
+    ) internal whenNotPaused nonReentrant {
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
 
         // If the start time is in the past, "fast forward" to start now
@@ -191,7 +218,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     }
 
 
-    function reweighTokens(address[] calldata tokens, uint256[] calldata desiredWeights) public {
+    function reweighTokens(address[] calldata tokens, uint256[] calldata desiredWeights) public returns(uint256, uint256){
         uint256 endTime = _poolState.decodeUint32(_END_TIME_OFFSET);
         require(block.timestamp >= endTime ,"Weight change is already in process");
         uint256 diff = 0;
@@ -201,20 +228,21 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; i++) {
             if(desiredWeights[i] > _normalizedWeights[i]){
-                if(diff < _normalizedWeights[i] - desiredWeights[i]){
-                    diff = _normalizedWeights[i] - desiredWeights[i];
+                if(diff < desiredWeights[i].sub(_normalizedWeights[i])){
+                    diff = desiredWeights[i].sub(_normalizedWeights[i]);
                 }
             }
             else {
-                if(diff < desiredWeights[i] - _normalizedWeights[i]){
-                    diff = desiredWeights[i] - _normalizedWeights[i] ;
+                if(diff < _normalizedWeights[i].sub(desiredWeights[i])){
+                    diff = _normalizedWeights[i].sub(desiredWeights[i]);
                 }
             }
             normalizedSum = normalizedSum.add(desiredWeights[i]);
         }
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
-        uint256 change_time = diff * _SECONDS_IN_A_DAY / FixedPoint.ONE;
-        updateWeightsGradually(block.timestamp, block.timestamp + change_time, desiredWeights);
+        uint256 change_time = (diff.mulDown(_SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE);
+        updateWeightsGradually(block.timestamp, block.timestamp.add(change_time), desiredWeights);
+        return (block.timestamp, block.timestamp.add(change_time));
     }
 
     function reindexTokens(
