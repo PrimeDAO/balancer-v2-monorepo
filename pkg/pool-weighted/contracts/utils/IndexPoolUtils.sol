@@ -1,8 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.7.0;
 
-import "hardhat/console.sol";
-
 contract IndexPoolUtils {
     uint256 public constant PRECISION = 18;
     uint256 public constant HUNDRED_PERCENT = 10**PRECISION;
@@ -13,7 +11,7 @@ contract IndexPoolUtils {
     /// @return Array with scaled and fixed weights of tokens. Should add up to one.
     function normalizeInterpolated(uint256[] memory _baseWeights, uint256[] memory _fixedWeights)
         public
-        view
+        pure
         returns (uint256[] memory)
     {
         require(_baseWeights.length == _fixedWeights.length, "ARRAY_LENGTHS_DIFFER");
@@ -66,13 +64,14 @@ contract IndexPoolUtils {
             checksum += normalizedWeights[i];
         }
 
+        // there are cases where due to rounding the sum of all normalizedWeights is slightly more/less than HUNDRED_PERCENT
+        // the largest possible deviation I could observe was 2 (e.g. 1000000000000000002)
+        // if such a case occurs to ensure normalized weights we just remove the difference from the first weight
+        // since this diff is extremely small this shouldn't pose a risk
         if (checksum != HUNDRED_PERCENT) {
             normalizedWeights[0] = checksum > HUNDRED_PERCENT
                 ? normalizedWeights[0] - (checksum - HUNDRED_PERCENT)
                 : normalizedWeights[0] + (HUNDRED_PERCENT - checksum);
-            checksum = checksum > HUNDRED_PERCENT
-                ? checksum - (checksum - HUNDRED_PERCENT)
-                : checksum + (HUNDRED_PERCENT - checksum);
         }
 
         return normalizedWeights;

@@ -85,7 +85,7 @@ const setupNewTokens = (numWeights: number) => {
   return { baseWeights, fixedWeights };
 };
 
-// generates random baseWeights and fixedWeights for the case the weights of existing tokens in a pool are changed
+// generates random baseWeights and fixedWeights for the case where the weights of existing tokens in a pool are changed
 const setupAdjustTokens = (numWeights: number) => {
   const baseWeights = getRandomBaseWeights(numWeights);
   const numberAdjustTokens = getIntegerBetween(1, numWeights - 1);
