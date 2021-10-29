@@ -54,11 +54,7 @@ const getRandomBaseWeights = (numWeights: number): number[] => {
   const baseWeights = [];
 
   for (let i = 0; i < numWeights - 1; i++) {
-    let weight;
-
-    do {
-      weight = getDecimalBetween(0.005, residual);
-    } while ([0, 1].includes(weight));
+    const weight = getDecimalBetween(Number.MIN_VALUE, residual / 2);
 
     residual -= weight;
     baseWeights.push(weight);
@@ -94,7 +90,7 @@ const setupAdjustTokens = (numWeights: number) => {
 
   let residual = 1;
   for (let i = 0; i < numberAdjustTokens; i++) {
-    const newWeight = getDecimalBetween(0.01, residual);
+    const newWeight = getDecimalBetween(Number.MIN_VALUE, residual / 2);
     fixedWeights[i] = newWeight;
     baseWeights[i] = 0;
     residual -= newWeight;
@@ -209,9 +205,11 @@ describe('IndexPoolUtils', function () {
       let baseWeights: number[], fixedWeights: number[];
 
       describe('with 2 base weights', () => {
+        const numberWeights = 2;
+
         describe('when adding tokens', () => {
           beforeEach(async () => {
-            ({ baseWeights, fixedWeights } = setupNewTokens(2));
+            ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
             receivedWeights = await normalizerInstance.normalizeInterpolated(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
@@ -230,7 +228,7 @@ describe('IndexPoolUtils', function () {
 
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
-            ({ baseWeights, fixedWeights } = setupAdjustTokens(2));
+            ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
             receivedWeights = await normalizerInstance.normalizeInterpolated(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
@@ -249,9 +247,11 @@ describe('IndexPoolUtils', function () {
       });
 
       describe('with 3 base weights', () => {
+        const numberWeights = 3;
+
         describe('when adding tokens', () => {
           beforeEach(async () => {
-            ({ baseWeights, fixedWeights } = setupNewTokens(3));
+            ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
             receivedWeights = await normalizerInstance.normalizeInterpolated(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
@@ -270,7 +270,7 @@ describe('IndexPoolUtils', function () {
 
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
-            ({ baseWeights, fixedWeights } = setupAdjustTokens(3));
+            ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
             receivedWeights = await normalizerInstance.normalizeInterpolated(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
@@ -289,9 +289,11 @@ describe('IndexPoolUtils', function () {
       });
 
       describe('with 4 base weights', () => {
+        const numberWeights = 4;
+
         describe('when adding tokens', () => {
           beforeEach(async () => {
-            ({ baseWeights, fixedWeights } = setupNewTokens(4));
+            ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
             receivedWeights = await normalizerInstance.normalizeInterpolated(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
@@ -310,7 +312,7 @@ describe('IndexPoolUtils', function () {
 
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
-            ({ baseWeights, fixedWeights } = setupAdjustTokens(4));
+            ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
             receivedWeights = await normalizerInstance.normalizeInterpolated(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
@@ -329,9 +331,11 @@ describe('IndexPoolUtils', function () {
       });
 
       describe('with 5 base weights', () => {
+        const numberWeights = 5;
+
         describe('when adding tokens', () => {
           beforeEach(async () => {
-            ({ baseWeights, fixedWeights } = setupNewTokens(5));
+            ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
             receivedWeights = await normalizerInstance.normalizeInterpolated(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
@@ -350,7 +354,343 @@ describe('IndexPoolUtils', function () {
 
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
-            ({ baseWeights, fixedWeights } = setupAdjustTokens(5));
+            ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+      });
+
+      describe('with 6 base weights', () => {
+        const numberWeights = 6;
+
+        describe('when adding tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+
+        describe('when adjusting existing tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+      });
+
+      describe('with 7 base weights', () => {
+        const numberWeights = 7;
+
+        describe('when adding tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+
+        describe('when adjusting existing tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+      });
+
+      describe('with 8 base weights', () => {
+        const numberWeights = 8;
+
+        describe('when adding tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+
+        describe('when adjusting existing tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+      });
+
+      describe('with 9 base weights', () => {
+        const numberWeights = 9;
+
+        describe('when adding tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+
+        describe('when adjusting existing tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+      });
+
+      describe('with 10 base weights', () => {
+        const numberWeights = 10;
+
+        describe('when adding tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+
+        describe('when adjusting existing tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+      });
+
+      describe('with 11 base weights', () => {
+        const numberWeights = 11;
+
+        describe('when adding tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+
+        describe('when adjusting existing tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+      });
+
+      describe('with 12 base weights', () => {
+        const numberWeights = 12;
+
+        describe('when adding tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+
+        describe('when adjusting existing tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+      });
+
+      describe('with 13 base weights', () => {
+        const numberWeights = 13;
+
+        describe('when adding tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
+            receivedWeights = await normalizerInstance.normalizeInterpolated(
+              baseWeights.map((w) => fp(w)),
+              fixedWeights.map((w) => fp(w))
+            );
+          });
+
+          it('returns the correct weights', () => {
+            const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
+            expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+          });
+
+          it('returns normalized weights', async () => {
+            expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+          });
+        });
+
+        describe('when adjusting existing tokens', () => {
+          beforeEach(async () => {
+            ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
             receivedWeights = await normalizerInstance.normalizeInterpolated(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
