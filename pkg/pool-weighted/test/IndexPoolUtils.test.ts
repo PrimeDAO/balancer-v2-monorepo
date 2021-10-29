@@ -49,6 +49,7 @@ const getDecimalBetween = (min: number, max: number): number =>
 
 const getIntegerBetween = (min: number, max: number): number => Math.floor(Math.random() * max + min);
 
+// generates random normalized base weights
 const getRandomBaseWeights = (numWeights: number): number[] => {
   let residual = 1;
   const baseWeights = [];
@@ -65,6 +66,7 @@ const getRandomBaseWeights = (numWeights: number): number[] => {
   return baseWeights;
 };
 
+// generates random baseWeights and fixedWeights for the case where one or two new tokens are added
 const setupNewTokens = (numWeights: number) => {
   const baseWeights = getRandomBaseWeights(numWeights);
 
@@ -83,6 +85,7 @@ const setupNewTokens = (numWeights: number) => {
   return { baseWeights, fixedWeights };
 };
 
+// generates random baseWeights and fixedWeights for the case the weights of existing tokens in a pool are changed
 const setupAdjustTokens = (numWeights: number) => {
   const baseWeights = getRandomBaseWeights(numWeights);
   const numberAdjustTokens = getIntegerBetween(1, numWeights - 1);
@@ -154,28 +157,26 @@ describe('IndexPoolUtils', function () {
         });
       });
 
-      // describe('with random pool weights', () => {
-      //   const baseWeights = [0.341, 0.362, 0.123412, 0.173588];
-      //   const fixedWeights = [0, 0, 0.01, 0.01];
+      describe.only('with 50/50 pool and ONE new tokens to be added w/ 20%', () => {
+        const baseWeights = [0.5, 0.5, 0];
+        const fixedWeights = [0, 0, 0.2];
 
-      //   beforeEach(async () => {
-      // receivedWeights = await normalizerInstance.normalizeInterpolated(
-      //   baseWeights.map((w) => fp(w)),
-      //   fixedWeights.map((w) => fp(w))
-      // );
-      //   });
+        beforeEach(async () => {
+          receivedWeights = await normalizerInstance.normalizeInterpolated(
+            baseWeights.map((w) => fp(w)),
+            fixedWeights.map((w) => fp(w))
+          );
+        });
 
-      //   it('returns the correct weights', async () => {
-      //     const expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
-      //     receivedWeights.forEach(
-      //       (receivedWeight, idx) => expect(areClose(receivedWeight, expectedWeights[idx])).to.be.true
-      //     );
-      //   });
+        it('returns the correct weights 78.4/19.6/2', async () => {
+          const expectedWeights = [0.4, 0.4, 0.2].map((pct) => fp(pct));
+          expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+        });
 
-      //   it('returns normalized weights', async () => {
-      //     expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
-      //   });
-      // });
+        it('returns normalized weights', async () => {
+          expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+        });
+      });
     });
 
     describe('with denormalized weights smoller than one', () => {
@@ -201,7 +202,7 @@ describe('IndexPoolUtils', function () {
       });
     });
 
-    describe.only('with random input weights', () => {
+    describe('with random input weights', () => {
       let baseWeights: number[], fixedWeights: number[];
 
       describe('with 2 base weights', () => {
