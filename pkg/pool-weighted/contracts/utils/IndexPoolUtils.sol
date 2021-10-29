@@ -31,11 +31,11 @@ contract IndexPoolUtils {
 
         for (uint256 i = 0; i < numberTokens; i++) {
             if (_fixedWeights[i] != 0) {
-                totalWeightFixedTokens += _fixedWeights[i];
-                totalWeight += _fixedWeights[i];
+                totalWeightFixedTokens = Math.add(totalWeightFixedTokens, _fixedWeights[i]);
+                totalWeight = Math.add(totalWeight, _fixedWeights[i]);
             } else {
-                totalWeight += _baseWeights[i];
-                totalWeightBaseTokens += _baseWeights[i];
+                totalWeight = Math.add(totalWeight, _baseWeights[i]);
+                totalWeightBaseTokens = Math.add(totalWeightBaseTokens, _baseWeights[i]);
             }
         }
 
@@ -45,7 +45,9 @@ contract IndexPoolUtils {
             here the weights of the existing tokens need to be scaled down 
         */
         bool isDownScale = totalWeight > HUNDRED_PERCENT;
-        uint256 denormWeightDiff = isDownScale ? totalWeight - HUNDRED_PERCENT : HUNDRED_PERCENT - totalWeight;
+        uint256 denormWeightDiff = isDownScale
+            ? Math.sub(totalWeight, HUNDRED_PERCENT)
+            : Math.sub(HUNDRED_PERCENT, totalWeight);
         uint256 checksum = 0;
         for (uint256 i = 0; i < numberTokens; i++) {
             // if fixedWeight is zero we can assume we are dealing with a token whose weight needs to be adjusted
