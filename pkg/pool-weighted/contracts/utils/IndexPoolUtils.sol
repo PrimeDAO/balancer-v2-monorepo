@@ -64,8 +64,8 @@ contract IndexPoolUtils {
 
                 // if base tokens needs to be scaled down we subtract the adjustmentAmount, else we add it
                 normalizedWeights[i] = isDownScale
-                    ? _baseWeights[i] - adjustmentAmount
-                    : _baseWeights[i] + adjustmentAmount;
+                    ? Math.sub(_baseWeights[i], adjustmentAmount)
+                    : Math.add(_baseWeights[i], adjustmentAmount);
             } else {
                 normalizedWeights[i] = _fixedWeights[i];
             }
