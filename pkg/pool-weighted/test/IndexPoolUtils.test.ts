@@ -77,9 +77,7 @@ describe.only('IndexPoolUtils', function () {
 
         it('returns the correct weights 79.2/19.8/1', async () => {
           const expectedWeights = [0.792, 0.198, 0.01].map((pct) => fp(pct));
-          receivedWeights.forEach(
-            (receivedWeight, idx) => expect(areClose(receivedWeight, expectedWeights[idx])).to.be.true
-          );
+          expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
         });
 
         it('returns normalized weights', async () => {
@@ -100,9 +98,7 @@ describe.only('IndexPoolUtils', function () {
 
         it('returns the correct weights 78.4/19.6/2', async () => {
           const expectedWeights = [0.784, 0.196, 0.01, 0.01].map((pct) => fp(pct));
-          receivedWeights.forEach(
-            (receivedWeight, idx) => expect(areClose(receivedWeight, expectedWeights[idx])).to.be.true
-          );
+          expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
         });
 
         it('returns normalized weights', async () => {
@@ -148,9 +144,7 @@ describe.only('IndexPoolUtils', function () {
 
         it('returns the correct weights 66/33/1', async () => {
           const expectedWeights = [0.66, 0.33, 0.01].map((pct) => fp(pct));
-          receivedWeights.forEach(
-            (receivedWeight, idx) => expect(areClose(receivedWeight, expectedWeights[idx])).to.be.true
-          );
+          expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
         });
 
         it('returns normalized weights', async () => {
