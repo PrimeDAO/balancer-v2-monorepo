@@ -50,6 +50,8 @@ import {
 } from './math';
 import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { Address } from 'cluster';
+import { ContractType } from 'hardhat/internal/hardhat-network/stack-traces/model';
 
 const MAX_IN_RATIO = fp(0.3);
 const MAX_OUT_RATIO = fp(0.3);
@@ -654,5 +656,15 @@ export default class WeightedPool {
   ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
     return await pool.reindexTokens(tokens, normalizedWeights, minimumBalances);
+  }
+
+  async configure(from: SignerWithAddress, controller: any): Promise<ContractTransaction> {
+    console.log('weightedPool: ', from.address);
+    const pool = this.instance.connect(from);
+    return await pool.configure(controller);
+  }
+
+  async getController(): Promise<ContractTransaction> {
+    return await this.instance.controller();
   }
 }

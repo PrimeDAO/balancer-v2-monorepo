@@ -16,6 +16,8 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../BaseWeightedPool.sol";
+import "hardhat/console.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
 
 /**
  * @dev Basic Weighted Pool with immutable weights.
@@ -23,18 +25,14 @@ import "../BaseWeightedPool.sol";
 contract IndexPool is BaseWeightedPool {
     using FixedPoint for uint256;
 
-    /* ==========  Modifiers  ========== */
-
-    modifier _control_ {
-        require(msg.sender == _controller, "ERR_NOT_CONTROLLER");
-        _;
-    }
-
     /* ==========  Storage  ========== */
 
     uint256 private constant _MAX_TOKENS = 50;
 
     uint256 private immutable _totalTokens;
+
+    // bytes32 public constant DEFAULT_ADMIN_ROLE = keccak256("DEFAULT_ADMIN_ROLE");
+    bytes32 public constant CONTROLLER_ROLE = keccak256("CONTROLLER_ROLE");
 
     IERC20[] internal _tokens;
 
@@ -100,8 +98,6 @@ contract IndexPool is BaseWeightedPool {
 
         _maxWeightTokenIndex = maxWeightTokenIndex;
 
-        _controller = owner;
-
         _normalizedWeights = normalizedWeights;
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _tokens = tokens;
@@ -109,9 +105,53 @@ contract IndexPool is BaseWeightedPool {
         for (uint8 i = 0; i < numTokens; i++) {
             scalingFactors.push(_computeScalingFactor(tokens[i]));
         }
+
+        // console.logBool(getVault().getAuthorizer().hasRole(DEFAULT_ADMIN_ROLE, owner));
+        // _setupRole(DEFAULT_ADMIN_ROLE, owner);
+        // _setupRole(CONTROLLER_ROLE, owner);
+        // console.logBool(hasRole(DEFAULT_ADMIN_ROLE, owner));
+
+        // getVault().getAuthorizer()._setupRole(CONTROLLER_ROLE, owner);
+        // console.logAddress(owner);
     }
 
-    function reweighTokens(address[] calldata tokens, uint96[] calldata desiredWeights) public _control_ {
+    function configure(address controller) external {
+        require(_controller == address(0), "ERR_CONFIGURED");
+        require(controller != address(0), "ERR_CONFIGURED");
+        _controller = controller;
+
+        // console.logString("here");
+        // console.logAddress(msg.sender);
+        // console.logAddress(_controller);
+
+        // console.logBool(hasRole(DEFAULT_ADMIN_ROLE, msg.sender));
+
+        // grantRole(CONTROLLER_ROLE, _controller);
+        // console.logBool(hasRole(CONTROLLER_ROLE, _controller));
+        bytes32[] memory actionIds = new bytes32[](2);
+        actionIds[0] = getActionId(this.reweighTokens.selector);
+        actionIds[1] = getActionId(this.reweighTokens.selector);
+
+        //  = [
+        //     getActionId(this.reweighTokens.selector),
+        //     getActionId(this.reindexTokens.selector)
+        // ];
+        // console.logString("here1");
+        console.logBool(_canPerform(actionIds[0], _controller));
+        console.logBool(_canPerform(actionIds[1], _controller));
+        // console.logBytes32(getActionId(this.reweighTokens.selector));
+
+        getVault().getAuthorizer().grantRoles(actionIds, _controller);
+
+        // console.logBool(_canPerform(getActionId(this.reweighTokens.selector), _controller));
+        // console.logBool(_canPerform(getActionId(this.reindexTokens.selector), _controller));
+    }
+
+    // function _authorizeController(bytes32[] memory actionIds) internal {
+    //     getVault().getAuthorizer().grantRoles(actionIds, _controller);
+    // }
+
+    function reweighTokens(address[] calldata tokens, uint96[] calldata desiredWeights) external view authenticate {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length);
 
@@ -126,7 +166,7 @@ contract IndexPool is BaseWeightedPool {
         address[] calldata tokens,
         uint96[] calldata desiredWeights,
         uint256[] calldata minimumBalances
-    ) external _control_ {
+    ) external view authenticate {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length, minimumBalances.length);
 

@@ -23,4 +23,9 @@ interface IAuthorizer {
         address account,
         address where
     ) external view returns (bool);
+
+    /**
+     * @dev Grants multiple roles to a single account.
+     */
+    function grantRoles(bytes32[] memory roles, address account) external;
 }
