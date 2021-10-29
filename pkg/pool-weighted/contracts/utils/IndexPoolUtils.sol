@@ -6,6 +6,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 contract IndexPoolUtils {
     using FixedPoint for uint256;
+    using Math for uint256;
 
     uint256 public constant PRECISION = 18;
     uint256 public constant HUNDRED_PERCENT = 10**PRECISION;
