@@ -90,7 +90,7 @@ const setupNewTokens = (numWeights: number) => {
 const setupAdjustTokens = (numWeights: number) => {
   const baseWeights = getRandomBaseWeights(numWeights);
   const numberAdjustTokens = getIntegerBetween(1, numWeights - 1);
-  const fixedWeights = [...baseWeights];
+  const fixedWeights = new Array(numWeights).fill(0);
 
   let residual = 1;
   for (let i = 0; i < numberAdjustTokens; i++) {
@@ -103,7 +103,7 @@ const setupAdjustTokens = (numWeights: number) => {
   return { baseWeights, fixedWeights };
 };
 
-describe.only('IndexPoolUtils', function () {
+describe('IndexPoolUtils', function () {
   let normalizerInstance: Contract;
 
   beforeEach(async () => {

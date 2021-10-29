@@ -1,8 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.7.0;
 
-import "hardhat/console.sol";
-
 contract IndexPoolUtils {
     uint256 public constant PRECISION = 18;
     uint256 public constant HUNDRED_PERCENT = 10**PRECISION;
@@ -13,7 +11,7 @@ contract IndexPoolUtils {
     /// @return Array with scaled and fixed weights of tokens. Should add up to one.
     function normalizeInterpolated(uint256[] memory _scaleWeights, uint256[] memory _fixedWeights)
         public
-        view
+        pure
         returns (uint256[] memory)
     {
         require(_scaleWeights.length == _fixedWeights.length, "ARRAY_LENGTHS_DIFFER");
@@ -65,7 +63,13 @@ contract IndexPoolUtils {
             }
             checksum += normalizedWeights[i];
         }
-        console.log(checksum);
+
+        if (checksum != HUNDRED_PERCENT) {
+            normalizedWeights[0] = checksum > HUNDRED_PERCENT
+                ? normalizedWeights[0] - (checksum - HUNDRED_PERCENT)
+                : normalizedWeights[0] + (HUNDRED_PERCENT - checksum);
+        }
+
         return normalizedWeights;
     }
 
