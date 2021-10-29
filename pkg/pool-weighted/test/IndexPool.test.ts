@@ -246,17 +246,19 @@ describe('IndexPool', function () {
 
     context('when weights are being changed', () => {
       it('Call of getGradualWeightUpdateParams correctly displays the result', async () => {
-        const fiveWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
-        const ret = await pool.reweighTokens(allTokens.subset(4).tokens.map((token) => token.address), fiveWeights);
+        const fourWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
+        const ret = await pool.reweighTokens(allTokens.subset(4).tokens.map((token) => token.address), fourWeights);
         let diff = 0;
-        for (let i = 0; i < fiveWeights.length; i++) {
-          if (Math.abs(Number(fiveWeights[i]) - Number(weights[i])) > diff) {
-            diff = Math.abs(Number(fiveWeights[i]) - Number(weights[i]));
+        for (let i = 0; i < fourWeights.length; i++) {
+          if (Math.abs(Number(fourWeights[i]) - Number(weights[i])) > diff) {
+            diff = Math.abs(Number(fourWeights[i]) - Number(weights[i]));
           }
         }
         const time = (diff / 1e18) * 86400 * 100;
         const { startTime, endTime, endWeights } = await pool.getGradualWeightUpdateParams();
         expect(time).to.equal(Number(endTime) - Number(startTime));
+        console.log(Number(endWeights[1]));
+        expect(fourWeights).to.to.equalWithError(endWeights, 0.0001);
       });
     });
   });
