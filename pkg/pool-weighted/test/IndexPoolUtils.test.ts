@@ -2,6 +2,7 @@ import { BigNumber } from '@ethersproject/bignumber';
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from '@ethersproject/contracts';
+import { fp } from '../../../pvt/helpers/src/numbers';
 
 const HUNDRED_PERCENT = BigNumber.from(10).pow(18);
 
@@ -14,16 +15,11 @@ const isNormalized = (weights: BigNumber[]): boolean => {
   return totalWeight.eq(HUNDRED_PERCENT);
 };
 
-const toBnPercentage = (decimalPercentage: number): BigNumber => {
-  const normalizedWeight = decimalPercentage * 10e17;
-  return BigNumber.from(normalizedWeight.toString());
-};
-
 const percentage = (a: BigNumber, b: BigNumber): BigNumber => a.mul(HUNDRED_PERCENT).div(b);
 
 const getExpectedWeights = (baseWeightsNumbers: number[], fixWeightsNumbers: number[]): BigNumber[] => {
-  const baseWeights = baseWeightsNumbers.map((w) => toBnPercentage(w));
-  const fixWeights = fixWeightsNumbers.map((w) => toBnPercentage(w));
+  const baseWeights = baseWeightsNumbers.map((w) => fp(w));
+  const fixWeights = fixWeightsNumbers.map((w) => fp(w));
 
   let totalDenormalizedBaseWeight = BigNumber.from(0);
   let totalDenormalizedFixedWeight = BigNumber.from(0);
@@ -54,7 +50,7 @@ const getExpectedWeights = (baseWeightsNumbers: number[], fixWeightsNumbers: num
   return finalWeights;
 };
 
-describe('IndexPoolUtils', function () {
+describe.only('IndexPoolUtils', function () {
   let normalizerInstance: Contract;
 
   beforeEach(async () => {
@@ -74,8 +70,8 @@ describe('IndexPoolUtils', function () {
         beforeEach(async () => {
           expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
           receivedWeights = await normalizerInstance.normalizeInterpolated(
-            baseWeights.map((w) => toBnPercentage(w)),
-            fixedWeights.map((w) => toBnPercentage(w))
+            baseWeights.map((w) => fp(w)),
+            fixedWeights.map((w) => fp(w))
           );
         });
 
@@ -97,8 +93,8 @@ describe('IndexPoolUtils', function () {
         beforeEach(async () => {
           expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
           receivedWeights = await normalizerInstance.normalizeInterpolated(
-            baseWeights.map((w) => toBnPercentage(w)),
-            fixedWeights.map((w) => toBnPercentage(w))
+            baseWeights.map((w) => fp(w)),
+            fixedWeights.map((w) => fp(w))
           );
         });
 
@@ -120,8 +116,8 @@ describe('IndexPoolUtils', function () {
         beforeEach(async () => {
           expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
           receivedWeights = await normalizerInstance.normalizeInterpolated(
-            baseWeights.map((w) => toBnPercentage(w)),
-            fixedWeights.map((w) => toBnPercentage(w))
+            baseWeights.map((w) => fp(w)),
+            fixedWeights.map((w) => fp(w))
           );
         });
 
@@ -145,8 +141,8 @@ describe('IndexPoolUtils', function () {
         beforeEach(async () => {
           expectedWeights = getExpectedWeights(baseWeights, fixedWeights);
           receivedWeights = await normalizerInstance.normalizeInterpolated(
-            baseWeights.map((w) => toBnPercentage(w)),
-            fixedWeights.map((w) => toBnPercentage(w))
+            baseWeights.map((w) => fp(w)),
+            fixedWeights.map((w) => fp(w))
           );
         });
 
@@ -161,5 +157,7 @@ describe('IndexPoolUtils', function () {
         });
       });
     });
+
+    describe('with random input weights', () => {});
   });
 });
