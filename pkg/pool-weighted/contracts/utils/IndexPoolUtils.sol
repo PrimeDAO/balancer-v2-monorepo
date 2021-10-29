@@ -2,6 +2,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 contract IndexPoolUtils {
     using FixedPoint for uint256;
@@ -54,8 +55,8 @@ contract IndexPoolUtils {
                     (absolute diff between hundred and combined weights of base and fixed tokens / hundred)
                 */
                 uint256 adjustmentAmount = FixedPoint.divUp(
-                    _baseWeights[i] * denormWeightDiff,
-                    totalWeightBaseTokens * HUNDRED_PERCENT
+                    Math.mul(_baseWeights[i], denormWeightDiff),
+                    Math.mul(totalWeightBaseTokens, HUNDRED_PERCENT)
                 );
 
                 // if base tokens needs to be scaled down we subtract the adjustmentAmount, else we add it
@@ -78,16 +79,5 @@ contract IndexPoolUtils {
         }
 
         return normalizedWeights;
-    }
-
-    /// @dev This function was copied from balancer v1 (BMath.sol)
-    function _bdiv(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, "ERR_DIV_ZERO");
-        uint256 c0 = a * HUNDRED_PERCENT;
-        require(a == 0 || c0 / a == HUNDRED_PERCENT, "ERR_DIV_INTERNAL"); // bmul overflow
-        uint256 c1 = c0 + (b / 2);
-        require(c1 >= c0, "ERR_DIV_INTERNAL"); //  badd require
-        uint256 c2 = c1 / b;
-        return c2;
     }
 }
