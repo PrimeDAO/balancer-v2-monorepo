@@ -1,7 +1,11 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+
 contract IndexPoolUtils {
+    using FixedPoint for uint256;
+
     uint256 public constant PRECISION = 18;
     uint256 public constant HUNDRED_PERCENT = 10**PRECISION;
 
@@ -49,7 +53,7 @@ contract IndexPoolUtils {
                     (weight of base token / combined weight of all base tokens) *
                     (absolute diff between hundred and combined weights of base and fixed tokens / hundred)
                 */
-                uint256 adjustmentAmount = _bdiv(
+                uint256 adjustmentAmount = FixedPoint.divUp(
                     _baseWeights[i] * denormWeightDiff,
                     totalWeightBaseTokens * HUNDRED_PERCENT
                 );
@@ -64,14 +68,13 @@ contract IndexPoolUtils {
             checksum += normalizedWeights[i];
         }
 
-        // there are cases where due to rounding the sum of all normalizedWeights is slightly more/less than HUNDRED_PERCENT
+        // there are cases where due to rounding the sum of all normalizedWeights is slightly more than HUNDRED_PERCENT
         // the largest possible deviation I could observe was 2 (e.g. 1000000000000000002)
-        // if such a case occurs to ensure normalized weights we just remove the difference from the first weight
+        // it can only be larger than HUNDRED_PERCENT since we use `diveUp`
+        // in that case we remove the diff from the first weight to ensure normalized weights
         // since this diff is extremely small this shouldn't pose a risk
         if (checksum != HUNDRED_PERCENT) {
-            normalizedWeights[0] = checksum > HUNDRED_PERCENT
-                ? normalizedWeights[0] - (checksum - HUNDRED_PERCENT)
-                : normalizedWeights[0] + (HUNDRED_PERCENT - checksum);
+            normalizedWeights[0] = normalizedWeights[0] - (checksum - HUNDRED_PERCENT);
         }
 
         return normalizedWeights;
