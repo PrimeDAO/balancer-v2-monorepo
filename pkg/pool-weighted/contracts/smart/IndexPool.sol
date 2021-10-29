@@ -218,7 +218,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     }
 
 
-    function reweighTokens(address[] calldata tokens, uint256[] calldata desiredWeights) public returns(uint256, uint256){
+    function reweighTokens(address[] calldata tokens, uint256[] calldata desiredWeights) public{
         uint256 endTime = _poolState.decodeUint32(_END_TIME_OFFSET);
         require(block.timestamp >= endTime ,"Weight change is already in process");
         uint256 diff = 0;
@@ -240,9 +240,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             normalizedSum = normalizedSum.add(desiredWeights[i]);
         }
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
-        uint256 change_time = (diff.mulDown(_SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE);
+        uint256 change_time = ((diff.mulDown(_SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
         updateWeightsGradually(block.timestamp, block.timestamp.add(change_time), desiredWeights);
-        return (block.timestamp, block.timestamp.add(change_time));
     }
 
     function reindexTokens(

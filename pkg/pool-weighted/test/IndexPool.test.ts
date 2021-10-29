@@ -248,14 +248,13 @@ describe('IndexPool', function () {
       it('Call of getGradualWeightUpdateParams correctly displays the result', async () => {
         const fiveWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
         const ret = await pool.reweighTokens(allTokens.subset(4).tokens.map((token) => token.address), fiveWeights);
-        console.log(ret);
         let diff = 0;
         for (let i = 0; i < fiveWeights.length; i++) {
           if (Math.abs(Number(fiveWeights[i]) - Number(weights[i])) > diff) {
             diff = Math.abs(Number(fiveWeights[i]) - Number(weights[i]));
           }
         }
-        const time = (diff / 1e18) * 86400;
+        const time = (diff / 1e18) * 86400 * 100;
         const { startTime, endTime, endWeights } = await pool.getGradualWeightUpdateParams();
         expect(time).to.equal(Number(endTime) - Number(startTime));
       });
