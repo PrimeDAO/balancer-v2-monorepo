@@ -1,35 +1,37 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.7.0;
 
+import "hardhat/console.sol";
+
 contract IndexPoolUtils {
     uint256 public constant PRECISION = 18;
     uint256 public constant HUNDRED_PERCENT = 10**PRECISION;
 
     /// @dev Can be used to scale the weights for tokens up or down so that the total weight is normalized.
-    /// @param _scaleWeights Array with weights of tokens. Those that are non-zero need to be scaled.
+    /// @param _baseWeights Array with weights of tokens. Those that are non-zero need to be scaled.
     /// @param _fixedWeights Array with weights of tokens. Those that are non-zero are fixed.
     /// @return Array with scaled and fixed weights of tokens. Should add up to one.
-    function normalizeInterpolated(uint256[] memory _scaleWeights, uint256[] memory _fixedWeights)
+    function normalizeInterpolated(uint256[] memory _baseWeights, uint256[] memory _fixedWeights)
         public
-        pure
+        view
         returns (uint256[] memory)
     {
-        require(_scaleWeights.length == _fixedWeights.length, "ARRAY_LENGTHS_DIFFER");
-        uint256 numberTokens = _scaleWeights.length;
+        require(_baseWeights.length == _fixedWeights.length, "ARRAY_LENGTHS_DIFFER");
+        uint256 numberTokens = _baseWeights.length;
 
         uint256[] memory normalizedWeights = new uint256[](numberTokens);
 
         uint256 totalWeightFixedTokens; //combined weight of all tokens from _fixedWeights
-        uint256 totalWeightBaseTokens; //combined weight of all tokens from _scaleWeights
-        uint256 totalWeight; //combined weight of all tokens from _scaleWeights & _fixedWeights
+        uint256 totalWeightBaseTokens; //combined weight of all tokens from _baseWeights
+        uint256 totalWeight; //combined weight of all tokens from _baseWeights & _fixedWeights
 
         for (uint256 i = 0; i < numberTokens; i++) {
             if (_fixedWeights[i] != 0) {
                 totalWeightFixedTokens += _fixedWeights[i];
                 totalWeight += _fixedWeights[i];
             } else {
-                totalWeight += _scaleWeights[i];
-                totalWeightBaseTokens += _scaleWeights[i];
+                totalWeight += _baseWeights[i];
+                totalWeightBaseTokens += _baseWeights[i];
             }
         }
 
@@ -50,14 +52,14 @@ contract IndexPoolUtils {
                     (absolute diff between hundred and combined weights of base and fixed tokens / hundred)
                 */
                 uint256 adjustmentAmount = _bdiv(
-                    _scaleWeights[i] * denormWeightDiff,
+                    _baseWeights[i] * denormWeightDiff,
                     totalWeightBaseTokens * HUNDRED_PERCENT
                 );
 
                 // if base tokens needs to be scaled down we subtract the adjustmentAmount, else we add it
                 normalizedWeights[i] = isDownScale
-                    ? _scaleWeights[i] - adjustmentAmount
-                    : _scaleWeights[i] + adjustmentAmount;
+                    ? _baseWeights[i] - adjustmentAmount
+                    : _baseWeights[i] + adjustmentAmount;
             } else {
                 normalizedWeights[i] = _fixedWeights[i];
             }
@@ -68,6 +70,9 @@ contract IndexPoolUtils {
             normalizedWeights[0] = checksum > HUNDRED_PERCENT
                 ? normalizedWeights[0] - (checksum - HUNDRED_PERCENT)
                 : normalizedWeights[0] + (HUNDRED_PERCENT - checksum);
+            checksum = checksum > HUNDRED_PERCENT
+                ? checksum - (checksum - HUNDRED_PERCENT)
+                : checksum + (HUNDRED_PERCENT - checksum);
         }
 
         return normalizedWeights;
