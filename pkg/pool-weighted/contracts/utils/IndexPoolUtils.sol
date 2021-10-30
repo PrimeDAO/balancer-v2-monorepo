@@ -31,11 +31,11 @@ contract IndexPoolUtils {
 
         for (uint256 i = 0; i < numberTokens; i++) {
             if (_fixedWeights[i] != 0) {
-                totalWeightFixedTokens += _fixedWeights[i];
-                totalWeight += _fixedWeights[i];
+                totalWeight = Math.add(totalWeight, _fixedWeights[i]);
+                totalWeightFixedTokens = Math.add(totalWeightFixedTokens, _fixedWeights[i]);
             } else {
-                totalWeight += _baseWeights[i];
-                totalWeightBaseTokens += _baseWeights[i];
+                totalWeight = Math.add(totalWeight, _baseWeights[i]);
+                totalWeightBaseTokens = Math.add(totalWeightBaseTokens, _baseWeights[i]);
             }
         }
 
