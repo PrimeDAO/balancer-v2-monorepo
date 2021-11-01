@@ -35,7 +35,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     // Offsets for data elements in _poolState
     uint256 private constant _SWAP_ENABLED_OFFSET = 0;
     uint256 private constant _START_WEIGHT_OFFSET = 4;
-    uint256 private constant _END_WEIGHT_OFFSET = 128;
+    uint256 private constant _END_WEIGHT_OFFSET = 128;//+64
     uint256 private constant _START_TIME_OFFSET = 192;
     uint256 private constant _END_TIME_OFFSET = 224;
     uint256 private constant _SECONDS_IN_A_DAY = 86400;
