@@ -1009,19 +1009,58 @@ describe('IndexPoolUtils', function () {
     });
   });
 
-  describe.only('#_getIncentivizedWeight', () => {
-    // formular for expected incentivized weight is
-    // 1% * (1 + (minimumBalance - newTokenBalanceIn) / (10 * minimumBalance))
-
-    describe('with minimum balance of 1,000,000 for a new token', () => {
+  describe.only('#_getUninitializedTokenWeight', () => {
+    describe('with fixed inputs (minimumBalance = 1,000,000)', () => {
       const minimumBalance = 1_000_000;
 
-      describe('when the amount of the new token after swap would be 100,000', () => {
+      describe('with amount of new token after swap is 100,000', () => {
         const newTokenBalanceIn = 100_000;
         const expectedWeight = fp(0.0109);
 
         it('returns the correct weight 1.09% ', async () => {
-          const receivedWeight = await indexPoolUtilsInstance.getIncentivizedWeight(
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+            parseEther(newTokenBalanceIn.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
+        });
+      });
+
+      describe('with amount of new token after swap is 900,000', () => {
+        const newTokenBalanceIn = 900_000;
+        const expectedWeight = fp(0.0101);
+
+        it('returns the correct weight 1.0101% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+            parseEther(newTokenBalanceIn.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
+        });
+      });
+
+      describe('with amount of new token after swap is 1000,000', () => {
+        const newTokenBalanceIn = 1000_000;
+        const expectedWeight = fp(0.01);
+
+        it('returns the correct weight 1% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+            parseEther(newTokenBalanceIn.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
+        });
+      });
+
+      describe('with amount of new token after swap is larger than 1000,000', () => {
+        const newTokenBalanceIn = 1_200_000;
+        const expectedWeight = fp(0.01);
+
+        it('returns the correct weight 1% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
             parseEther(newTokenBalanceIn.toString()),
             parseEther(minimumBalance.toString())
           );

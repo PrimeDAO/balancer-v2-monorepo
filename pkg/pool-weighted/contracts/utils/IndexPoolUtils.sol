@@ -85,14 +85,16 @@ contract IndexPoolUtils {
         return normalizedWeights;
     }
 
-    function _getIncentivizedWeight(uint256 _newTokenBalanceIn, uint256 _minimumBalance)
+    function _getUninitializedTokenWeight(uint256 _newTokenBalanceIn, uint256 _minimumBalance)
         internal
         view
         returns (uint256)
     {
+        uint256 currentWeight = HUNDRED_PERCENT / 100;
         // formular for expected incentivized weight is
         // 1% * (1 + (minimumBalance - newTokenBalanceIn) / (10 * minimumBalance))
-        uint256 currentWeight = HUNDRED_PERCENT / 100;
+        if (_newTokenBalanceIn > _minimumBalance) return currentWeight;
+
         uint256 balanceDiff = Math.sub(_minimumBalance, _newTokenBalanceIn);
         uint256 incentivizationPercentage = FixedPoint.divUp(balanceDiff, (10 * _minimumBalance));
         uint256 incentivizationFactor = Math.add(HUNDRED_PERCENT, incentivizationPercentage);
