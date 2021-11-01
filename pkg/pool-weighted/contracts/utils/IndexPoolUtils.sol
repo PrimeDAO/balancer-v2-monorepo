@@ -85,13 +85,23 @@ contract IndexPoolUtils {
         return normalizedWeights;
     }
 
+    /// @dev Calculates the weight to be used to calculate the price of an uninitialized token depending on its amount in pool.
+    /// @param _newTokenBalanceIn Amount of uninitialized token in pool (after the swap)
+    /// @param _minimumBalance Minimum balance set for the uninitialized token (= initialization threshold)
+    /// @return Weight to be used to calculate the price of an uninitalized token.
     function _getUninitializedTokenWeight(uint256 _newTokenBalanceIn, uint256 _minimumBalance)
         internal
         view
         returns (uint256)
     {
         uint256 currentWeight = HUNDRED_PERCENT / 100;
+
         bool addPremium = _newTokenBalanceIn < _minimumBalance;
+
+        // if minimum balance has not been met a slight premium is added to the weight to incentivize swaps
+        // the formular for the resulting weight is: 1% * (1 + (minimumBalance - newTokenBalanceIn) / (10 * minimumBalance))
+        // if minimum balance is exceeded the weight is increased relative to the excess amount
+        // the formular for the resulting weight is: 1% * (1 + (minimumBalance - newTokenBalanceIn) / minimumBalance)
         uint256 scalingFactor = addPremium ? 10 : 1;
 
         uint256 balanceDiff = addPremium
