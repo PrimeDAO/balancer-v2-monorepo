@@ -11,6 +11,25 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import { range } from 'lodash';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
 
+const calculateMaxWeightDifference = (oldWeights: BigNumber[], newWeights: BigNumber[]) => {
+  let maxWeightDifference = 0;
+  for (let i = 0; i < newWeights.length; i++) {
+    if (Math.abs(Number(newWeights[i]) - Number(oldWeights[i])) > maxWeightDifference) {
+      maxWeightDifference = Math.abs(Number(newWeights[i]) - Number(oldWeights[i]));
+    }
+  }
+  return maxWeightDifference;
+};
+
+const getTimeForWeightChange = (weightDifference: number) => {
+  // 1e18 is 100%, we need to calculate on how much percent the weight changes first,
+  // then we can understand how much time do we need by multiplying amount of percents o amount of seconds per day
+  // (1% change in a day at max rate)
+  return (weightDifference / 1e18) * 86400 * 100;
+};
+
+
+
 describe('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress;
 
@@ -247,17 +266,12 @@ describe('IndexPool', function () {
     context('when weights are being changed', () => {
       it('Call of getGradualWeightUpdateParams correctly displays the result', async () => {
         const fourWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
-        const ret = await pool.reweighTokens(allTokens.subset(4).tokens.map((token) => token.address), fourWeights);
-        let diff = 0;
-        for (let i = 0; i < fourWeights.length; i++) {
-          if (Math.abs(Number(fourWeights[i]) - Number(weights[i])) > diff) {
-            diff = Math.abs(Number(fourWeights[i]) - Number(weights[i]));
-          }
-        }
-        const time = (diff / 1e18) * 86400 * 100;
+        const reweightResult = await pool.reweighTokens(allTokens.subset(4).tokens.map((token) => token.address), fourWeights);
+        const maxWeightDifference = calculateMaxWeightDifference( fourWeights, weights);
+        const time = getTimeForWeightChange(maxWeightDifference);
         const { startTime, endTime, endWeights } = await pool.getGradualWeightUpdateParams();
+        console.log(startTime);
         expect(time).to.equal(Number(endTime) - Number(startTime));
-        console.log(Number(endWeights[1]));
         expect(fourWeights).to.to.equalWithError(endWeights, 0.0001);
       });
     });
