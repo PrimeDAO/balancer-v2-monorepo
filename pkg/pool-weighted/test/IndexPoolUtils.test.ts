@@ -1004,4 +1004,10 @@ describe('IndexPoolUtils', function () {
       });
     });
   });
+
+  describe.only('#_getIncentivizedWeight', () => {
+    it('', async () => {
+      console.log('bla');
+    });
+  });
 });
