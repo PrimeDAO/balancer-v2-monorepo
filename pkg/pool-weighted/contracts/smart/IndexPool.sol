@@ -220,12 +220,11 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
      * @dev Schedule a gradual weight change, from the current weights to the given endWeights,
      * over startTime to endTime
      */
-//    TODO: has to be authenticate
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
         uint256[] memory endWeights
-    ) internal whenNotPaused nonReentrant {
+    ) internal nonReentrant {
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
 
         // If the start time is in the past, "fast forward" to start now
