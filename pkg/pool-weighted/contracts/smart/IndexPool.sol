@@ -30,14 +30,32 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
     uint256 private constant _MAX_TOKENS = 50;
 
+
+    // For gas optimization, store start/end weights and timestamps in one bytes32
+    // Start weights need to be high precision, since restarting the update resets them to "spot"
+    // values. Target end weights do not need as much precision.
+    // [ 188 bits |     32 bits   |     32 bits     |    3 bits    |     1 bit    ]
+    // [  unused  | end timestamp | start timestamp |   not used   | swap enabled ]
+    // |MSB                                                         LSB|
     bytes32 private _poolState;
 
     // Offsets for data elements in _poolState
     uint256 private constant _SWAP_ENABLED_OFFSET = 0;
-    uint256 private constant _START_WEIGHT_OFFSET = 4;
-    uint256 private constant _END_WEIGHT_OFFSET = 128;//+64
-    uint256 private constant _START_TIME_OFFSET = 192;
-    uint256 private constant _END_TIME_OFFSET = 224;
+    uint256 private constant _START_TIME_OFFSET = 4;
+    uint256 private constant _END_TIME_OFFSET = 36;
+
+    // Store scaling factor and start/end weights for each token
+    // Mapping should be more efficient than trying to compress it further
+    // [ 155 bits|   5 bits |  32 bits   |   64 bits    ]
+    // [ unused  | decimals | end weight | start weight ]
+    // |MSB                                          LSB|
+    mapping(IERC20 => bytes32) private _tokenState;
+
+    // Offsets for data elements in _poolState
+    uint256 private constant _START_WEIGHT_OFFSET = 0;
+    uint256 private constant _END_WEIGHT_OFFSET = 64;
+    uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
+
     uint256 private constant _SECONDS_IN_A_DAY = 86400;
 
 
@@ -138,7 +156,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             endWeights = new uint256[](totalTokens);
 
             for (uint256 i = 0; i < totalTokens; i++) {
-                endWeights[i] = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).uncompress16();
+                endWeights[i] =  _tokenState[_tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
             }
     }
 
@@ -182,9 +200,10 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
 
-            newPoolState = newPoolState
-            .insertUint31(startWeights[i].compress31(), _START_WEIGHT_OFFSET + i * 31)
-            .insertUint16(endWeight.compress16(), _END_WEIGHT_OFFSET + i * 16);
+            _tokenState[_tokens[i]] = _tokenState[_tokens[i]]
+            .insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET )
+            .insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET)
+            .insertUint5(uint256(18).sub(ERC20(address(_tokens[i])).decimals()), _DECIMAL_DIFF_OFFSET);
 
             normalizedSum = normalizedSum.add(endWeight);
         }
@@ -282,8 +301,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
 
     function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
-        uint256 startWeight = poolState.decodeUint31(_START_WEIGHT_OFFSET + i * 31).uncompress31();
-        uint256 endWeight = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).uncompress16();
+        uint256 startWeight =  _tokenState[_tokens[i]].decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
+        uint256 endWeight =  _tokenState[_tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
 
         uint256 pctProgress = _calculateWeightChangeProgress(poolState);
 
