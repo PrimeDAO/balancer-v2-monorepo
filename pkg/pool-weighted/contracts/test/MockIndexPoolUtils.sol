@@ -12,7 +12,7 @@ contract MockIndexPoolUtils is IndexPoolUtils {
         return _normalizeInterpolated(_baseWeights, _fixedWeights);
     }
 
-    function getIncentivizedWeight(uint256 newTokenBalanceIn, uint256 minimumBalance) public pure returns (uint256) {
-        return _getIncentivizedWeight(newTokenBalanceIn, minimumBalance);
+    function getIncentivizedWeight(uint256 _newTokenBalanceIn, uint256 _minimumBalance) public pure returns (uint256) {
+        return _getIncentivizedWeight(_newTokenBalanceIn, _minimumBalance);
     }
 }

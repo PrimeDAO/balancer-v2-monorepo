@@ -4,6 +4,10 @@ import { expect } from 'chai';
 import { Contract } from '@ethersproject/contracts';
 import { fp } from '../../../pvt/helpers/src/numbers';
 
+const {
+  utils: { parseEther, formatEther },
+} = ethers;
+
 const HUNDRED_PERCENT = BigNumber.from(10).pow(18);
 
 const getTotalWeight = (weights: BigNumber[]): BigNumber =>
@@ -1006,8 +1010,25 @@ describe('IndexPoolUtils', function () {
   });
 
   describe.only('#_getIncentivizedWeight', () => {
-    it('', async () => {
-      console.log('bla');
+    // formular for expected incentivized weight is
+    // 1% * (1 + (minimumBalance - newTokenBalanceIn) / (10 * minimumBalance))
+
+    describe('with minimum balance of 1,000,000 for a new token', () => {
+      const minimumBalance = 1_000_000;
+
+      describe('when the amount of the new token after swap would be 100,000', () => {
+        const newTokenBalanceIn = 100_000;
+        const expectedWeight = fp(0.0109);
+
+        it('returns the correct weight 1.09% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getIncentivizedWeight(
+            parseEther(newTokenBalanceIn.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
+        });
+      });
     });
   });
 });

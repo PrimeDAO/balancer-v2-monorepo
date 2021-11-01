@@ -83,7 +83,7 @@ contract IndexPoolUtils {
         return normalizedWeights;
     }
 
-    function _getIncentivizedWeight(uint256 newTokenBalanceIn, uint256 minimumBalance)
+    function _getIncentivizedWeight(uint256 _newTokenBalanceIn, uint256 _minimumBalance)
         internal
         pure
         returns (uint256)
