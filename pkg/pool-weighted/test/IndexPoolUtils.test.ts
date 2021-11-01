@@ -1041,7 +1041,7 @@ describe('IndexPoolUtils', function () {
         });
       });
 
-      describe('with amount of new token after swap is 1000,000', () => {
+      describe('with amount of new token after swap is 1,000,000', () => {
         const newTokenBalanceIn = 1000_000;
         const expectedWeight = fp(0.01);
 
@@ -1055,11 +1055,11 @@ describe('IndexPoolUtils', function () {
         });
       });
 
-      describe('with amount of new token after swap is larger than 1000,000', () => {
+      describe('with amount of new token after swap is 1,200,000', () => {
         const newTokenBalanceIn = 1_200_000;
-        const expectedWeight = fp(0.01);
+        const expectedWeight = fp(0.012);
 
-        it('returns the correct weight 1% ', async () => {
+        it('returns the correct weight 1.2% ', async () => {
           const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
             parseEther(newTokenBalanceIn.toString()),
             parseEther(minimumBalance.toString())

@@ -91,12 +91,14 @@ contract IndexPoolUtils {
         returns (uint256)
     {
         uint256 currentWeight = HUNDRED_PERCENT / 100;
-        // formular for expected incentivized weight is
-        // 1% * (1 + (minimumBalance - newTokenBalanceIn) / (10 * minimumBalance))
-        if (_newTokenBalanceIn > _minimumBalance) return currentWeight;
+        bool addPremium = _newTokenBalanceIn < _minimumBalance;
+        uint256 scalingFactor = addPremium ? 10 : 1;
 
-        uint256 balanceDiff = Math.sub(_minimumBalance, _newTokenBalanceIn);
-        uint256 incentivizationPercentage = FixedPoint.divUp(balanceDiff, (10 * _minimumBalance));
+        uint256 balanceDiff = addPremium
+            ? Math.sub(_minimumBalance, _newTokenBalanceIn)
+            : Math.sub(_newTokenBalanceIn, _minimumBalance);
+
+        uint256 incentivizationPercentage = FixedPoint.divUp(balanceDiff, (scalingFactor * _minimumBalance));
         uint256 incentivizationFactor = Math.add(HUNDRED_PERCENT, incentivizationPercentage);
 
         return FixedPoint.mulUp(currentWeight, incentivizationFactor);
