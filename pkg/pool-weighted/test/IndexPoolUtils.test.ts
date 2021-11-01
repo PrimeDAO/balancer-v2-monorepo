@@ -106,7 +106,7 @@ describe.only('IndexPoolUtils', function () {
   let normalizerInstance: Contract;
 
   beforeEach(async () => {
-    const normalizerFactory = await ethers.getContractFactory('IndexPoolUtils');
+    const normalizerFactory = await ethers.getContractFactory('TestWrapper');
     normalizerInstance = await normalizerFactory.deploy();
     await normalizerInstance.deployed();
   });

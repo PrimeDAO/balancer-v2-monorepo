@@ -15,8 +15,8 @@ contract IndexPoolUtils {
     /// @param _baseWeights Array with weights of tokens. Those that are non-zero need to be scaled.
     /// @param _fixedWeights Array with weights of tokens. Those that are non-zero are fixed.
     /// @return Array with scaled and fixed weights of tokens. Should add up to one.
-    function normalizeInterpolated(uint256[] memory _baseWeights, uint256[] memory _fixedWeights)
-        public
+    function _normalizeInterpolated(uint256[] memory _baseWeights, uint256[] memory _fixedWeights)
+        internal
         pure
         returns (uint256[] memory)
     {
