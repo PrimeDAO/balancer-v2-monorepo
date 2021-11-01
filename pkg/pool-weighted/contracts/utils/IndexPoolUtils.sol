@@ -12,6 +12,7 @@ contract IndexPoolUtils {
 
     uint256 public constant PRECISION = 18;
     uint256 public constant HUNDRED_PERCENT = 10**PRECISION;
+    uint256 public constant UNINITIALIZED_WEIGHT = HUNDRED_PERCENT / 100;
 
     /// @dev Can be used to scale the weights for tokens up or down so that the total weight is normalized.
     /// @param _baseWeights Array with weights of tokens. Those that are non-zero need to be scaled.
@@ -94,8 +95,6 @@ contract IndexPoolUtils {
         view
         returns (uint256)
     {
-        uint256 currentWeight = HUNDRED_PERCENT / 100;
-
         bool addPremium = _newTokenBalanceIn < _minimumBalance;
 
         // if minimum balance has not been met a slight premium is added to the weight to incentivize swaps
@@ -111,6 +110,6 @@ contract IndexPoolUtils {
         uint256 incentivizationPercentage = FixedPoint.divUp(balanceDiff, (scalingFactor * _minimumBalance));
         uint256 incentivizationFactor = Math.add(HUNDRED_PERCENT, incentivizationPercentage);
 
-        return FixedPoint.mulUp(currentWeight, incentivizationFactor);
+        return FixedPoint.mulUp(UNINITIALIZED_WEIGHT, incentivizationFactor);
     }
 }
