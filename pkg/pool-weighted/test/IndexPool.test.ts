@@ -270,7 +270,6 @@ describe('IndexPool', function () {
         const maxWeightDifference = calculateMaxWeightDifference( fourWeights, weights);
         const time = getTimeForWeightChange(maxWeightDifference);
         const { startTime, endTime, endWeights } = await pool.getGradualWeightUpdateParams();
-        console.log(startTime);
         expect(time).to.equal(Number(endTime) - Number(startTime));
         expect(fourWeights).to.to.equalWithError(endWeights, 0.0001);
       });

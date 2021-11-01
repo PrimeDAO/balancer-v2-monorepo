@@ -111,6 +111,9 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         for (uint8 i = 0; i < numTokens; i++) {
             scalingFactors.push(_computeScalingFactor(tokens[i]));
         }
+
+        uint256 currentTime = block.timestamp;
+        _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights);
     }
 
     /**
