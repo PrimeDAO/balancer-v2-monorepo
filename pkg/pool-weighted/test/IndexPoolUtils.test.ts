@@ -102,7 +102,7 @@ const setupAdjustTokens = (numWeights: number) => {
   return { baseWeights, fixedWeights };
 };
 
-describe.only('IndexPoolUtils', function () {
+describe('IndexPoolUtils', function () {
   let normalizerInstance: Contract;
 
   beforeEach(async () => {
