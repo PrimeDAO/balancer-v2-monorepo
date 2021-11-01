@@ -1009,7 +1009,7 @@ describe('IndexPoolUtils', function () {
     });
   });
 
-  describe.only('#_getUninitializedTokenWeight', () => {
+  describe('#_getUninitializedTokenWeight', () => {
     describe('with fixed inputs (minimumBalance = 1,000,000)', () => {
       const minimumBalance = 1_000_000;
 
