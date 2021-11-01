@@ -4,6 +4,8 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
+import "hardhat/console.sol";
+
 contract IndexPoolUtils {
     using FixedPoint for uint256;
     using Math for uint256;
@@ -85,7 +87,16 @@ contract IndexPoolUtils {
 
     function _getIncentivizedWeight(uint256 _newTokenBalanceIn, uint256 _minimumBalance)
         internal
-        pure
+        view
         returns (uint256)
-    {}
+    {
+        // formular for expected incentivized weight is
+        // 1% * (1 + (minimumBalance - newTokenBalanceIn) / (10 * minimumBalance))
+        uint256 currentWeight = HUNDRED_PERCENT / 100;
+        uint256 balanceDiff = Math.sub(_minimumBalance, _newTokenBalanceIn);
+        uint256 incentivizationPercentage = FixedPoint.divUp(balanceDiff, (10 * _minimumBalance));
+        uint256 incentivizationFactor = Math.add(HUNDRED_PERCENT, incentivizationPercentage);
+
+        return FixedPoint.mulUp(currentWeight, incentivizationFactor);
+    }
 }
