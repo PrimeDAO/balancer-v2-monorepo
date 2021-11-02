@@ -1009,11 +1009,25 @@ describe('IndexPoolUtils', function () {
     });
   });
 
-  describe.only('#_getUninitializedTokenWeight', () => {
+  describe('#_getUninitializedTokenWeight', () => {
     describe('with fixed inputs (minimumBalance = 1,000,000)', () => {
       const minimumBalance = 1_000_000;
 
-      describe('with amount of new token after swap is 100,000', () => {
+      describe('with amount of new token before swap is 0', () => {
+        const newTokenBalance = 0;
+        const expectedWeight = fp(0.011);
+
+        it('returns the correct weight 1.1% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+            parseEther(newTokenBalance.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
+        });
+      });
+
+      describe('with amount of new token before swap is 100,000', () => {
         const newTokenBalance = 100_000;
         const expectedWeight = fp(0.0109);
 
@@ -1027,7 +1041,7 @@ describe('IndexPoolUtils', function () {
         });
       });
 
-      describe('with amount of new token after swap is 900,000', () => {
+      describe('with amount of new token before swap is 900,000', () => {
         const newTokenBalance = 900_000;
         const expectedWeight = fp(0.0101);
 
@@ -1041,7 +1055,7 @@ describe('IndexPoolUtils', function () {
         });
       });
 
-      describe('with amount of new token after swap is 1,000,000', () => {
+      describe('with amount of new token before swap is 1,000,000', () => {
         const newTokenBalance = 1000_000;
         const expectedWeight = fp(0.01);
 
@@ -1055,7 +1069,7 @@ describe('IndexPoolUtils', function () {
         });
       });
 
-      describe('with amount of new token after swap is 1,200,000', () => {
+      describe('with amount of new token before swap is 1,200,000', () => {
         const newTokenBalance = 1_200_000;
         const expectedWeight = fp(0.012);
 
