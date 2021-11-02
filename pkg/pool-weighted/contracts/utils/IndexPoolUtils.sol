@@ -8,9 +8,9 @@ contract IndexPoolUtils {
     using FixedPoint for uint256;
     using Math for uint256;
 
-    uint256 public constant PRECISION = 18;
-    uint256 public constant HUNDRED_PERCENT = 10**PRECISION;
-    uint256 public constant UNINITIALIZED_WEIGHT = HUNDRED_PERCENT / 100;
+    uint256 internal constant PRECISION = 18;
+    uint256 internal constant HUNDRED_PERCENT = 10**PRECISION;
+    uint256 internal constant UNINITIALIZED_WEIGHT = HUNDRED_PERCENT / 100;
 
     /// @dev Can be used to scale the weights for tokens up or down so that the total weight is normalized.
     /// @param _baseWeights Array with weights of tokens. Those that are non-zero need to be scaled.
