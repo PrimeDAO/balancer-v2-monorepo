@@ -4,8 +4,6 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
-import "hardhat/console.sol";
-
 contract IndexPoolUtils {
     using FixedPoint for uint256;
     using Math for uint256;
@@ -92,7 +90,7 @@ contract IndexPoolUtils {
     /// @return Weight to be used to calculate the price of an uninitalized token.
     function _getUninitializedTokenWeight(uint256 _newTokenBalanceIn, uint256 _minimumBalance)
         internal
-        view
+        pure
         returns (uint256)
     {
         bool addPremium = _newTokenBalanceIn < _minimumBalance;
