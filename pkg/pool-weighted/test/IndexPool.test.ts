@@ -3,8 +3,6 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
@@ -28,8 +26,6 @@ const getTimeForWeightChange = (weightDifference: number) => {
   return (weightDifference / 1e18) * 86400 * 100;
 };
 
-
-
 describe('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress;
 
@@ -47,10 +43,8 @@ describe('IndexPool', function () {
     await tokens.mint({ to: [other], amount: fp(200) });
   });
 
-  let sender: SignerWithAddress;
   let pool: WeightedPool;
   const weights = [fp(0.3), fp(0.55), fp(0.1), fp(0.05)];
-  const initialBalances = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
 
   context('with invalid creation parameters', () => {
     const tooManyWeights = [fp(0.3), fp(0.25), fp(0.3), fp(0.1), fp(0.05)];
@@ -266,8 +260,11 @@ describe('IndexPool', function () {
     context('when weights are being changed', () => {
       it('Call of getGradualWeightUpdateParams correctly displays the result', async () => {
         const fourWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
-        const reweightResult = await pool.reweighTokens(allTokens.subset(4).tokens.map((token) => token.address), fourWeights);
-        const maxWeightDifference = calculateMaxWeightDifference( fourWeights, weights);
+        await pool.reweighTokens(
+          allTokens.subset(4).tokens.map((token) => token.address),
+          fourWeights
+        );
+        const maxWeightDifference = calculateMaxWeightDifference(fourWeights, weights);
         const time = getTimeForWeightChange(maxWeightDifference);
         const { startTime, endTime, endWeights } = await pool.getGradualWeightUpdateParams();
         expect(time).to.equal(Number(endTime) - Number(startTime));
@@ -276,4 +273,3 @@ describe('IndexPool', function () {
     });
   });
 });
-

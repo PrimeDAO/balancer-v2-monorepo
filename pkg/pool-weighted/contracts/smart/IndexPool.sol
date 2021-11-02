@@ -30,7 +30,6 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
     uint256 private constant _MAX_TOKENS = 50;
 
-
     // For gas optimization, store start/end weights and timestamps in one bytes32
     // Start weights need to be high precision, since restarting the update resets them to "spot"
     // values. Target end weights do not need as much precision.
@@ -58,7 +57,6 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
     uint256 private constant _SECONDS_IN_A_DAY = 86400;
 
-
     uint256 private immutable _totalTokens;
 
     IERC20[] internal _tokens;
@@ -66,6 +64,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
     // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
+    // solhint-disable-next-line
     uint256[] internal scalingFactors;
 
     // The protocol fees will always be charged using the token associated with the max weight in the pool.
@@ -139,25 +138,25 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
      * Current weights should be retrieved via `getNormalizedWeights()`.
      */
     function getGradualWeightUpdateParams()
-    external
-    view
-    returns (
-        uint256 startTime,
-        uint256 endTime,
-        uint256[] memory endWeights
-    )
+        external
+        view
+        returns (
+            uint256 startTime,
+            uint256 endTime,
+            uint256[] memory endWeights
+        )
     {
-            // Load current pool state from storage
-            bytes32 poolState = _poolState;
+        // Load current pool state from storage
+        bytes32 poolState = _poolState;
 
-            startTime = poolState.decodeUint32(_START_TIME_OFFSET);
-            endTime = poolState.decodeUint32(_END_TIME_OFFSET);
-            uint256 totalTokens = _getTotalTokens();
-            endWeights = new uint256[](totalTokens);
+        startTime = poolState.decodeUint32(_START_TIME_OFFSET);
+        endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+        uint256 totalTokens = _getTotalTokens();
+        endWeights = new uint256[](totalTokens);
 
-            for (uint256 i = 0; i < totalTokens; i++) {
-                endWeights[i] =  _tokenState[_tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
-            }
+        for (uint256 i = 0; i < totalTokens; i++) {
+            endWeights[i] = _tokenState[_tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+        }
     }
 
     /**
@@ -184,9 +183,9 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     /**
-    * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
-    * if necessary.
-    */
+     * @dev When calling _updateWeightsGradually again during an update,
+     * reset the start weights to the current weights, if necessary.
+     */
     function _startGradualWeightChange(
         uint256 startTime,
         uint256 endTime,
@@ -201,9 +200,9 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             _tokenState[_tokens[i]] = _tokenState[_tokens[i]]
-            .insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET )
-            .insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET)
-            .insertUint5(uint256(18).sub(ERC20(address(_tokens[i])).decimals()), _DECIMAL_DIFF_OFFSET);
+                .insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET)
+                .insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET)
+                .insertUint5(uint256(18).sub(ERC20(address(_tokens[i])).decimals()), _DECIMAL_DIFF_OFFSET);
 
             normalizedSum = normalizedSum.add(endWeight);
         }
@@ -211,16 +210,14 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
         _poolState = newPoolState.insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET);
-
         //        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
-
 
     /**
      * @dev Schedule a gradual weight change, from the current weights to the given endWeights,
      * over startTime to endTime
      */
-    function updateWeightsGradually(
+    function _updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
         uint256[] memory endWeights
@@ -238,31 +235,29 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights);
     }
 
-
-    function reweighTokens(address[] calldata tokens, uint256[] calldata desiredWeights) public{
+    function reweighTokens(address[] calldata tokens, uint256[] calldata desiredWeights) public {
         uint256 endTime = _poolState.decodeUint32(_END_TIME_OFFSET);
-        require(block.timestamp >= endTime ,"Weight change is already in process");
+        require(block.timestamp >= endTime, "Weight change is already in process");
         uint256 diff = 0;
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length);
 
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; i++) {
-            if(desiredWeights[i] > _normalizedWeights[i]){
-                if(diff < desiredWeights[i].sub(_normalizedWeights[i])){
+            if (desiredWeights[i] > _normalizedWeights[i]) {
+                if (diff < desiredWeights[i].sub(_normalizedWeights[i])) {
                     diff = desiredWeights[i].sub(_normalizedWeights[i]);
                 }
-            }
-            else {
-                if(diff < _normalizedWeights[i].sub(desiredWeights[i])){
+            } else {
+                if (diff < _normalizedWeights[i].sub(desiredWeights[i])) {
                     diff = _normalizedWeights[i].sub(desiredWeights[i]);
                 }
             }
             normalizedSum = normalizedSum.add(desiredWeights[i]);
         }
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
-        uint256 change_time = ((diff.mulDown(_SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
-        updateWeightsGradually(block.timestamp, block.timestamp.add(change_time), desiredWeights);
+        uint256 changeTime = ((diff.mulDown(_SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
+        _updateWeightsGradually(block.timestamp, block.timestamp.add(changeTime), desiredWeights);
     }
 
     function reindexTokens(
@@ -298,16 +293,14 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
-
     function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
-        uint256 startWeight =  _tokenState[_tokens[i]].decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
-        uint256 endWeight =  _tokenState[_tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+        uint256 startWeight = _tokenState[_tokens[i]].decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
+        uint256 endWeight = _tokenState[_tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
 
         uint256 pctProgress = _calculateWeightChangeProgress(poolState);
 
         return _interpolateWeight(startWeight, endWeight, pctProgress);
     }
-
 
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
         // prettier-ignore
@@ -319,21 +312,18 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         _revert(Errors.INVALID_TOKEN);
     }
 
-
     function _getNormalizedWeights() internal view override returns (uint256[] memory) {
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory normalizedWeights = new uint256[](totalTokens);
 
         bytes32 poolState = _poolState;
 
-        for( uint8 i = 0; i < totalTokens; i++)
-        {
+        for (uint8 i = 0; i < totalTokens; i++) {
             normalizedWeights[i] = _getNormalizedWeightByIndex(i, poolState);
         }
 
         return normalizedWeights;
     }
-
 
     function _getNormalizedWeightsAndMaxWeightIndex()
         internal
