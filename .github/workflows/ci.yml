@@ -156,7 +156,7 @@ jobs:
       - name: Compile
         run: yarn build
       - name: Test
-        run: cd pkg/pool-weighted && npm run test ./test/IndexPool.test.ts
+        run: yarn workspaces foreach --verbose --include @balancer-labs/v2-pool-weighted run test ./test/IndexPool.test.ts
 
 #  test-asset-managers:
 #    runs-on: ubuntu-latest
