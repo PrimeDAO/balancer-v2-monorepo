@@ -85,15 +85,15 @@ contract IndexPoolUtils {
     }
 
     /// @dev Calculates the weight to be used to calculate the price of an uninitialized token depending on its amount in pool.
-    /// @param _newTokenBalanceIn Amount of uninitialized token in pool (after the swap)
+    /// @param _newTokenBalance Amount of uninitialized token in pool (after the swap)
     /// @param _minimumBalance Minimum balance set for the uninitialized token (= initialization threshold)
     /// @return Weight to be used to calculate the price of an uninitalized token.
-    function _getUninitializedTokenWeight(uint256 _newTokenBalanceIn, uint256 _minimumBalance)
+    function _getUninitializedTokenWeight(uint256 _newTokenBalance, uint256 _minimumBalance)
         internal
         pure
         returns (uint256)
     {
-        bool addPremium = _newTokenBalanceIn < _minimumBalance;
+        bool addPremium = _newTokenBalance < _minimumBalance;
 
         // if minimum balance has not been met a slight premium is added to the weight to incentivize swaps
         // the formular for the resulting weight is: 1% * (1 + (minimumBalance - newTokenBalanceIn) / (10 * minimumBalance))
@@ -102,8 +102,8 @@ contract IndexPoolUtils {
         uint256 scalingFactor = addPremium ? 10 : 1;
 
         uint256 balanceDiff = addPremium
-            ? Math.sub(_minimumBalance, _newTokenBalanceIn)
-            : Math.sub(_newTokenBalanceIn, _minimumBalance);
+            ? Math.sub(_minimumBalance, _newTokenBalance)
+            : Math.sub(_newTokenBalance, _minimumBalance);
 
         uint256 incentivizationPercentage = FixedPoint.divUp(balanceDiff, (scalingFactor * _minimumBalance));
         uint256 incentivizationFactor = Math.add(HUNDRED_PERCENT, incentivizationPercentage);

@@ -14,7 +14,7 @@ contract MockIndexPoolUtils is IndexPoolUtils {
 
     function getUninitializedTokenWeight(uint256 _newTokenBalanceIn, uint256 _minimumBalance)
         public
-        view
+        pure
         returns (uint256)
     {
         return _getUninitializedTokenWeight(_newTokenBalanceIn, _minimumBalance);
