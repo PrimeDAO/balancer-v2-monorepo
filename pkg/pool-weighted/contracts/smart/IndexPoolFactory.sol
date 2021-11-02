@@ -43,19 +43,19 @@ contract IndexPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
         return
-        _create(
-            abi.encode(
-                getVault(),
-                name,
-                symbol,
-                tokens,
-                weights,
-                swapFeePercentage,
-                pauseWindowDuration,
-                bufferPeriodDuration,
-                owner,
-                swapEnabledOnStart
-            )
-        );
+            _create(
+                abi.encode(
+                    getVault(),
+                    name,
+                    symbol,
+                    tokens,
+                    weights,
+                    swapFeePercentage,
+                    pauseWindowDuration,
+                    bufferPeriodDuration,
+                    owner,
+                    swapEnabledOnStart
+                )
+            );
     }
 }

@@ -64,7 +64,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
     // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
-    uint256[] internal scalingFactors;
+    uint256[] internal _tokenScalingFactors;
 
     // The protocol fees will always be charged using the token associated with the max weight in the pool.
     // Since these Pools will register tokens only once, we can assume this index will be constant.
@@ -125,7 +125,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         _tokens = tokens;
 
         for (uint8 i = 0; i < numTokens; i++) {
-            scalingFactors.push(_computeScalingFactor(tokens[i]));
+            _tokenScalingFactors.push(_computeScalingFactor(tokens[i]));
         }
 
         uint256 currentTime = block.timestamp;
@@ -217,7 +217,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
      * @dev Schedule a gradual weight change, from the current weights to the given endWeights,
      * over startTime to endTime
      */
-    function updateWeightsGradually(
+    function _updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
         uint256[] memory endWeights
@@ -257,7 +257,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         }
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
         uint256 change_time = ((diff.mulDown(_SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
-        updateWeightsGradually(block.timestamp, block.timestamp.add(change_time), desiredWeights);
+        _updateWeightsGradually(block.timestamp, block.timestamp.add(change_time), desiredWeights);
     }
 
     function reindexTokens(
@@ -351,7 +351,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         // prettier-ignore
         for(uint i = 0; i < _tokens.length; i++){
             if (token == _tokens[i]) {
-                return scalingFactors[i];
+                return _tokenScalingFactors[i];
             }
         }
 
@@ -359,7 +359,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        return scalingFactors;
+        return _tokenScalingFactors;
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
