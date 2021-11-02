@@ -28,6 +28,9 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     using WordCodec for bytes32;
     using WeightCompression for uint256;
 
+    /** @dev Emitted when a token's minimum balance is updated. */
+    event LOG_MINIMUM_BALANCE_UPDATED(address token, uint256 minimumBalance);
+
     uint256 private constant _MAX_TOKENS = 50;
 
 
@@ -62,6 +65,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private immutable _totalTokens;
 
     IERC20[] internal _tokens;
+    uint256[] internal _minimumBalances;
 
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
@@ -158,6 +162,32 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             for (uint256 i = 0; i < totalTokens; i++) {
                 endWeights[i] =  _tokenState[_tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
             }
+    }
+
+    /**
+    * @dev Updates the minimum balance for an uninitialized token.
+    * This becomes useful if a token's external price significantly
+    * rises after being bound, since the pool can not send a token
+    * out until it reaches the minimum balance.
+    */
+    function setMinimumBalance(
+        address token,
+        uint256 minimumBalance
+    )
+    external
+    authenticate
+    {
+        uint8 index = 0;
+        for( ; index < _tokens.length; ){
+            if (token == address(_tokens[index])){
+                require(_normalizedWeights[index] == FixedPoint.ONE, "Token is already initialized");
+                _minimumBalances[index] = minimumBalance;
+                emit LOG_MINIMUM_BALANCE_UPDATED(token, minimumBalance);
+                return;
+            }
+            index++;
+        }
+        revert("Provided token is not in the pool");
     }
 
     /**
@@ -278,6 +308,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             require(minimumBalances[i] != 0, "Invalid zero minimum balance");
             normalizedSum = normalizedSum.add(desiredWeights[i]);
         }
+        _minimumBalances = minimumBalances;
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
     }
 
