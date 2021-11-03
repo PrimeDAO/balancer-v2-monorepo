@@ -26,7 +26,7 @@ const getTimeForWeightChange = (weightDifference: number) => {
   return (weightDifference / 1e18) * 86400 * 100;
 };
 
-describe.only('IndexPool', function () {
+describe('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress;
 
   before('setup signers', async () => {
@@ -178,24 +178,24 @@ describe.only('IndexPool', function () {
     context('with valid inputs', () => {
       const desiredWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
 
-      it('sets the correct endWeights', async () => {
+      sharedBeforeEach('deploy pool', async () => {
         await pool.reweighTokens(
           allTokens.subset(4).tokens.map((token) => token.address),
           desiredWeights
         );
+      });
+
+      it('sets the correct endWeights', async () => {
         const { endWeights } = await pool.getGradualWeightUpdateParams();
-        expect(endWeights).to.to.equalWithError(desiredWeights, 0.0001);
+        expect(endWeights).to.equalWithError(desiredWeights, 0.0001);
       });
 
       it('sets the correct rebalancing period', async () => {
-        await pool.reweighTokens(
-          allTokens.subset(4).tokens.map((token) => token.address),
-          desiredWeights
-        );
         const maxWeightDifference = calculateMaxWeightDifference(desiredWeights, weights);
         const time = getTimeForWeightChange(maxWeightDifference);
         const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
-        expect(Number(endTime) - Number(startTime)).to.equal(time);
+
+        expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
       });
     });
   });

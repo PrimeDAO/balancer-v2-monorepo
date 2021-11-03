@@ -245,7 +245,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         address[] calldata tokens,
         uint256[] calldata desiredWeights,
         uint256[] calldata minimumBalances
-    ) external {
+    ) external pure {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length, minimumBalances.length);
 
