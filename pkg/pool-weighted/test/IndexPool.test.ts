@@ -26,7 +26,7 @@ const getTimeForWeightChange = (weightDifference: number) => {
   return (weightDifference / 1e18) * 86400 * 100;
 };
 
-describe('IndexPool', function () {
+describe.only('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress;
 
   before('setup signers', async () => {
@@ -174,6 +174,30 @@ describe('IndexPool', function () {
         );
       });
     });
+
+    context('with valid inputs', () => {
+      const desiredWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
+
+      it('sets the correct endWeights', async () => {
+        await pool.reweighTokens(
+          allTokens.subset(4).tokens.map((token) => token.address),
+          desiredWeights
+        );
+        const { endWeights } = await pool.getGradualWeightUpdateParams();
+        expect(desiredWeights).to.to.equalWithError(endWeights, 0.0001);
+      });
+
+      it('sets the correct endTime', async () => {
+        await pool.reweighTokens(
+          allTokens.subset(4).tokens.map((token) => token.address),
+          desiredWeights
+        );
+        const maxWeightDifference = calculateMaxWeightDifference(desiredWeights, weights);
+        const time = getTimeForWeightChange(maxWeightDifference);
+        const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
+        expect(time).to.equal(Number(endTime) - Number(startTime));
+      });
+    });
   });
 
   describe('#reindexTokens', () => {
@@ -241,34 +265,6 @@ describe('IndexPool', function () {
         await expect(pool.reindexTokens(addresses, weights, invalidMinimumBalances)).to.be.revertedWith(
           'Invalid zero minimum balance'
         );
-      });
-    });
-  });
-
-  describe('#getGradualWeightUpdateParams', () => {
-    sharedBeforeEach('deploy pool', async () => {
-      const params = {
-        tokens,
-        weights,
-        owner,
-        poolType: WeightedPoolType.INDEX_POOL,
-        swapEnabledOnStart: false,
-      };
-      pool = await WeightedPool.create(params);
-    });
-
-    context('when weights are being changed', () => {
-      it('Call of getGradualWeightUpdateParams correctly displays the result', async () => {
-        const fourWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
-        await pool.reweighTokens(
-          allTokens.subset(4).tokens.map((token) => token.address),
-          fourWeights
-        );
-        const maxWeightDifference = calculateMaxWeightDifference(fourWeights, weights);
-        const time = getTimeForWeightChange(maxWeightDifference);
-        const { startTime, endTime, endWeights } = await pool.getGradualWeightUpdateParams();
-        expect(time).to.equal(Number(endTime) - Number(startTime));
-        expect(fourWeights).to.to.equalWithError(endWeights, 0.0001);
       });
     });
   });
