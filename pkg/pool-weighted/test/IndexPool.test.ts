@@ -184,10 +184,10 @@ describe.only('IndexPool', function () {
           desiredWeights
         );
         const { endWeights } = await pool.getGradualWeightUpdateParams();
-        expect(desiredWeights).to.to.equalWithError(endWeights, 0.0001);
+        expect(endWeights).to.to.equalWithError(desiredWeights, 0.0001);
       });
 
-      it('sets the correct endTime', async () => {
+      it('sets the correct rebalancing period', async () => {
         await pool.reweighTokens(
           allTokens.subset(4).tokens.map((token) => token.address),
           desiredWeights
@@ -195,7 +195,7 @@ describe.only('IndexPool', function () {
         const maxWeightDifference = calculateMaxWeightDifference(desiredWeights, weights);
         const time = getTimeForWeightChange(maxWeightDifference);
         const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
-        expect(time).to.equal(Number(endTime) - Number(startTime));
+        expect(Number(endTime) - Number(startTime)).to.equal(time);
       });
     });
   });
