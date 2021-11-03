@@ -20,6 +20,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "./WeightCompression.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
@@ -46,8 +48,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
-    // [ 155 bits|   5 bits |  32 bits   |   64 bits    ]
-    // [ unused  | decimals | end weight | start weight ]
+    // [ 155 bits|   8 bits          |   5 bits |  32 bits   |   64 bits    ]
+    // [ unused  | below min balance | decimals | end weight | start weight ]
     // |MSB                                          LSB|
     mapping(IERC20 => bytes32) private _tokenState;
 
@@ -55,6 +57,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _START_WEIGHT_OFFSET = 0;
     uint256 private constant _END_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
+    uint256 private constant _BELOW_MIN_BALANCE = 101;
 
     uint256 private constant _SECONDS_IN_A_DAY = 86400;
 
@@ -246,11 +249,18 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     ) external pure {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length, minimumBalances.length);
-
+        console.log("FEK");
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; i++) {
             require(minimumBalances[i] != 0, "Invalid zero minimum balance");
             normalizedSum = normalizedSum.add(desiredWeights[i]);
+            console.log(uint256(_tokenState[IERC20(tokens[i])]));
+
+            // check if token is new token
+            bytes32 currentTokenParam = _tokenState[IERC20(tokens[i])];
+            if (currentTokenParam.decodeUint32(_START_TIME_OFFSET) == 0) {
+                console.log("kek");
+            }
         }
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
     }
