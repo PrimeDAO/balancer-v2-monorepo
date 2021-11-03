@@ -30,18 +30,19 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
     uint256 private constant _MAX_TOKENS = 50;
 
-    // For gas optimization, store start/end weights and timestamps in one bytes32
-    // Start weights need to be high precision, since restarting the update resets them to "spot"
-    // values. Target end weights do not need as much precision.
-    // [ 188 bits |     32 bits   |     32 bits     |    3 bits    |     1 bit    ]
-    // [  unused  | end timestamp | start timestamp |   not used   | swap enabled ]
-    // |MSB                                                         LSB|
-    bytes32 private _poolState;
-
-    // Offsets for data elements in _poolState
+    // Use the _miscData slot in BasePool
+    // First 64 bits are reserved for the swap fee
+    //
+    // Store non-token-based values:
+    // Start/end timestamps for gradual weight update
+    // Cache total tokens
+    // [ 64 bits  |  120 bits |  32 bits  |   32 bits  |    7 bits    |    1 bit     ]
+    // [ reserved |  unused   | end time  | start time | total tokens |   swap flag  ]
+    // |MSB                                                                       LSB|
     uint256 private constant _SWAP_ENABLED_OFFSET = 0;
-    uint256 private constant _START_TIME_OFFSET = 4;
-    uint256 private constant _END_TIME_OFFSET = 36;
+    uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
+    uint256 private constant _START_TIME_OFFSET = 8;
+    uint256 private constant _END_TIME_OFFSET = 40;
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
@@ -50,14 +51,12 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     // |MSB                                          LSB|
     mapping(IERC20 => bytes32) private _tokenState;
 
-    // Offsets for data elements in _poolState
+    // Offsets for data elements in _tokenState
     uint256 private constant _START_WEIGHT_OFFSET = 0;
     uint256 private constant _END_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
 
     uint256 private constant _SECONDS_IN_A_DAY = 86400;
-
-    uint256 private immutable _totalTokens;
 
     IERC20[] internal _tokens;
 
@@ -100,7 +99,9 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
 
-        _totalTokens = numTokens;
+        _setMiscData(_getMiscData().insertUint7(numTokens, _TOTAL_TOKENS_OFFSET));
+        // Double check it fits in 7 bits
+        _require(_getTotalTokens() == numTokens, Errors.MAX_TOKENS);
 
         // Ensure  each normalized weight is above them minimum and find the token index of the maximum weight
         uint256 normalizedSum = 0;
@@ -130,7 +131,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         }
 
         uint256 currentTime = block.timestamp;
-        _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights);
+        _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights, tokens);
     }
 
     /**
@@ -147,11 +148,14 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         )
     {
         // Load current pool state from storage
-        bytes32 poolState = _poolState;
+        bytes32 poolState = _getMiscData();
 
         startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         endTime = poolState.decodeUint32(_END_TIME_OFFSET);
-        uint256 totalTokens = _getTotalTokens();
+
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        uint256 totalTokens = tokens.length;
+
         endWeights = new uint256[](totalTokens);
 
         for (uint256 i = 0; i < totalTokens; i++) {
@@ -163,23 +167,24 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
      * @dev Returns a fixed-point number representing how far along the current weight change is, where 0 means the
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
-    function _calculateWeightChangeProgress(bytes32 poolState) private view returns (uint256) {
+    function _calculateWeightChangeProgress() private view returns (uint256) {
         uint256 currentTime = block.timestamp;
+        bytes32 poolState = _getMiscData();
+
         uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
 
-        if (currentTime > endTime) {
+        if (currentTime >= endTime) {
             return FixedPoint.ONE;
-        } else if (currentTime < startTime) {
+        } else if (currentTime <= startTime) {
             return 0;
         }
 
-        // No need for SafeMath as it was checked right above: endTime >= currentTime >= startTime
         uint256 totalSeconds = endTime - startTime;
         uint256 secondsElapsed = currentTime - startTime;
 
         // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
-        return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);
+        return secondsElapsed.divDown(totalSeconds);
     }
 
     /**
@@ -190,26 +195,31 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         uint256 startTime,
         uint256 endTime,
         uint256[] memory startWeights,
-        uint256[] memory endWeights
+        uint256[] memory endWeights,
+        IERC20[] memory tokens
     ) internal virtual {
-        bytes32 newPoolState = _poolState;
-
         uint256 normalizedSum = 0;
+        bytes32 tokenState;
+
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
 
-            _tokenState[_tokens[i]] = _tokenState[_tokens[i]]
+            IERC20 token = tokens[i];
+
+            _tokenState[token] = tokenState
                 .insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET)
                 .insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET)
-                .insertUint5(uint256(18).sub(ERC20(address(_tokens[i])).decimals()), _DECIMAL_DIFF_OFFSET);
+                .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
 
             normalizedSum = normalizedSum.add(endWeight);
         }
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        _poolState = newPoolState.insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET);
+        _setMiscData(
+            _getMiscData().insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET)
+        );
         //        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
@@ -232,11 +242,13 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
         _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
 
-        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights);
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+
+        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
     }
 
     function reweighTokens(address[] calldata tokens, uint256[] calldata desiredWeights) public {
-        uint256 endTime = _poolState.decodeUint32(_END_TIME_OFFSET);
+        uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
         require(block.timestamp >= endTime, "Weight change is already in process");
         uint256 diff = 0;
         uint256 numTokens = tokens.length;
@@ -276,30 +288,20 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
     }
 
-    function _interpolateWeight(
-        uint256 startWeight,
-        uint256 endWeight,
-        uint256 pctProgress
-    ) private pure returns (uint256) {
+    function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private pure returns (uint256 finalWeight) {
+        uint256 startWeight = tokenData.decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
+        uint256 endWeight = tokenData.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+
         if (pctProgress == 0 || startWeight == endWeight) return startWeight;
         if (pctProgress >= FixedPoint.ONE) return endWeight;
 
         if (startWeight > endWeight) {
             uint256 weightDelta = pctProgress.mulDown(startWeight - endWeight);
-            return startWeight.sub(weightDelta);
+            return startWeight - weightDelta;
         } else {
             uint256 weightDelta = pctProgress.mulDown(endWeight - startWeight);
-            return startWeight.add(weightDelta);
+            return startWeight + weightDelta;
         }
-    }
-
-    function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
-        uint256 startWeight = _tokenState[_tokens[i]].decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
-        uint256 endWeight = _tokenState[_tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
-
-        uint256 pctProgress = _calculateWeightChangeProgress(poolState);
-
-        return _interpolateWeight(startWeight, endWeight, pctProgress);
     }
 
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
@@ -312,27 +314,38 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         _revert(Errors.INVALID_TOKEN);
     }
 
-    function _getNormalizedWeights() internal view override returns (uint256[] memory) {
-        uint256 totalTokens = _getTotalTokens();
-        uint256[] memory normalizedWeights = new uint256[](totalTokens);
+    function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        uint256 numTokens = tokens.length;
 
-        bytes32 poolState = _poolState;
+        normalizedWeights = new uint256[](numTokens);
 
-        for (uint8 i = 0; i < totalTokens; i++) {
-            normalizedWeights[i] = _getNormalizedWeightByIndex(i, poolState);
+        uint256 pctProgress = _calculateWeightChangeProgress();
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            bytes32 tokenData = _tokenState[tokens[i]];
+
+            normalizedWeights[i] = _interpolateWeight(tokenData, pctProgress);
         }
-
-        return normalizedWeights;
     }
 
     function _getNormalizedWeightsAndMaxWeightIndex()
         internal
         view
-        virtual
         override
-        returns (uint256[] memory, uint256)
+        returns (uint256[] memory normalizedWeights, uint256 maxWeightTokenIndex)
     {
-        return (_getNormalizedWeights(), _maxWeightTokenIndex);
+        normalizedWeights = _getNormalizedWeights();
+
+        maxWeightTokenIndex = 0;
+        uint256 maxNormalizedWeight = normalizedWeights[0];
+
+        for (uint256 i = 1; i < normalizedWeights.length; i++) {
+            if (normalizedWeights[i] > maxNormalizedWeight) {
+                maxWeightTokenIndex = i;
+                maxNormalizedWeight = normalizedWeights[i];
+            }
+        }
     }
 
     function _getMaxTokens() internal pure virtual override returns (uint256) {
@@ -340,7 +353,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _totalTokens;
+        return _getMiscData().decodeUint7(_TOTAL_TOKENS_OFFSET);
     }
 
     /**
