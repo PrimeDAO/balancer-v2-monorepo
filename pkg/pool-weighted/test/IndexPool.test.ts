@@ -271,7 +271,7 @@ describe('IndexPool', function () {
     context.only('when adding one new token', () => {
       it('?????', async () => {
         const addresses = allTokens.subset(5).tokens.map((token) => token.address);
-        const weights = [fp(0.2), fp(0.55), fp(0.1), fp(0.05), fp(0.2)];
+        const weights = [fp(0.2), fp(0.55), fp(0.1), fp(0.05), fp(0.1)];
 
         const minimumBalances = [1000, 1000, 1000, 1000, 1000];
         await pool.reindexTokens(addresses, weights, minimumBalances);

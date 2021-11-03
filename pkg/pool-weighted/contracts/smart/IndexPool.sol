@@ -250,23 +250,33 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
     ) external pure {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length, minimumBalances.length);
-        console.log("FEK");
         uint256 normalizedSum = 0;
+
+        // assemble params for IndexPoolUtils._normalizeInterpolated
+        uint256[] memory baseWeights = new uint256[](tokens.length);
+        uint256[] memory fixedWeights = new uint256[](tokens.length);
+
         for (uint8 i = 0; i < numTokens; i++) {
             require(minimumBalances[i] != 0, "Invalid zero minimum balance");
             normalizedSum = normalizedSum.add(desiredWeights[i]);
 
             // check if token is new token
             bytes32 currentToken = _tokenState[IERC20(tokens[i])];
-            console.log(currentToken.decodeUint32(_START_TIME_OFFSET));
             if (currentToken.decodeUint32(_START_TIME_OFFSET) == 0) {
+                // currentToken is new token
                 // 1. set it to uninitialized
-                console.log(currentToken.decodeBool(_UNINITIALIZED_OFFSET));
                 currentToken = currentToken.insertBool(true, _UNINITIALIZED_OFFSET);
-                console.log(currentToken.decodeBool(_UNINITIALIZED_OFFSET));
-                // 2. set its weight to 1% & adjust the weights of the other tokens accordingly
+                // 2. add to fixedWeights
+                fixedWeights[i] = desiredWeights[i];
+                // TODO: store minimumBalance
+            } else {
+                // currentToken is existing token
+                baseWeights[i] = desiredWeights[i];
             }
         }
+
+        uint256[] memory immediateNewWeights = _normalizeInterpolated(baseWeights, fixedWeights);
+
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
     }
 
