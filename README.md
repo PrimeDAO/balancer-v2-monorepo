@@ -3,7 +3,7 @@
 # Balancer V2 Monorepo
 
 [![Docs](https://img.shields.io/badge/docs-%F0%9F%93%84-blue)](https://docs.balancer.fi/)
-[![CI Status](https://github.com/balancer-labs/balancer-v2-monorepo/workflows/CI/badge.svg)](https://github.com/balancer-labs/balancer-v2-monorepo/actions)
+[![CI](https://github.com/PrimeDAO/balancer-v2-monorepo/actions/workflows/ci.yml/badge.svg)](https://github.com/PrimeDAO/balancer-v2-monorepo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-GPLv3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 This repository contains the Balancer Protocol V2 core smart contracts, including the `Vault` and standard Pools, along with their tests, configuration, and deployment information.
