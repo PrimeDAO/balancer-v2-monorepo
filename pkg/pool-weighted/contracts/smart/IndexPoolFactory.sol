@@ -36,7 +36,7 @@ contract IndexPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
         IERC20[] memory tokens,
         uint256[] memory weights,
         uint256 swapFeePercentage,
-        address owner,
+        address controller,
         bool swapEnabledOnStart,
         uint256 managementSwapFeePercentage
     ) external returns (address) {
@@ -53,7 +53,7 @@ contract IndexPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
                     swapFeePercentage,
                     pauseWindowDuration,
                     bufferPeriodDuration,
-                    owner,
+                    controller,
                     swapEnabledOnStart
                 )
             );

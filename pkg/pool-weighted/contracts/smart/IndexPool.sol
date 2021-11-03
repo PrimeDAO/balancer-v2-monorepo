@@ -82,7 +82,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        address owner
+        address controller
     )
         BaseWeightedPool(
             vault,
@@ -93,7 +93,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            owner
+            controller
         )
     {
         uint256 numTokens = tokens.length;
