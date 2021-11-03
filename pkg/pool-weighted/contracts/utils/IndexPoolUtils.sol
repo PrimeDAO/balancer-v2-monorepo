@@ -8,9 +8,9 @@ contract IndexPoolUtils {
     using FixedPoint for uint256;
     using Math for uint256;
 
-    uint256 internal constant PRECISION = 18;
-    uint256 internal constant HUNDRED_PERCENT = 10**PRECISION;
-    uint256 internal constant UNINITIALIZED_WEIGHT = HUNDRED_PERCENT / 100;
+    uint256 internal constant _PRECISION = 18;
+    uint256 internal constant _HUNDRED_PERCENT = 10**_PRECISION;
+    uint256 internal constant _UNINITIALIZED_WEIGHT = _HUNDRED_PERCENT / 100;
 
     /// @dev Can be used to scale the weights for tokens up or down so that the total weight is normalized.
     /// @param _baseWeights Array with weights of tokens. Those that are non-zero need to be scaled.
@@ -45,8 +45,8 @@ contract IndexPoolUtils {
             example: pool with 80/20 is transformed to ?/?/1 => totalWeight = 101
             here the weights of the existing tokens need to be scaled down
         */
-        bool isDownScale = totalWeight > HUNDRED_PERCENT;
-        uint256 denormWeightDiff = isDownScale ? totalWeight - HUNDRED_PERCENT : HUNDRED_PERCENT - totalWeight;
+        bool isDownScale = totalWeight > _HUNDRED_PERCENT;
+        uint256 denormWeightDiff = isDownScale ? totalWeight - _HUNDRED_PERCENT : _HUNDRED_PERCENT - totalWeight;
         uint256 checksum = 0;
         for (uint256 i = 0; i < numberTokens; i++) {
             // if fixedWeight is zero we can assume we are dealing with a token whose weight needs to be adjusted
@@ -58,7 +58,7 @@ contract IndexPoolUtils {
                 */
                 uint256 adjustmentAmount = FixedPoint.divUp(
                     Math.mul(_baseWeights[i], denormWeightDiff),
-                    Math.mul(totalWeightBaseTokens, HUNDRED_PERCENT)
+                    Math.mul(totalWeightBaseTokens, _HUNDRED_PERCENT)
                 );
 
                 // if base tokens needs to be scaled down we subtract the adjustmentAmount, else we add it
@@ -72,19 +72,19 @@ contract IndexPoolUtils {
         }
 
         // there are cases where due to rounding the sum of all normalizedWeights is slightly less/more
-        // then HUNDRED_PERCENT the largest possible deviation I could observe was 19 (e.g. 1000000000000000019)
+        // then _HUNDRED_PERCENT the largest possible deviation I could observe was 19 (e.g. 1000000000000000019)
         // in that case we remove/add the diff from the first weight to ensure normalized weights
         // since this diff is extremely small (< 0.000000000001 %) this shouldn't pose a risk
-        if (checksum != HUNDRED_PERCENT) {
-            normalizedWeights[0] = checksum > HUNDRED_PERCENT
-                ? Math.sub(normalizedWeights[0], (checksum - HUNDRED_PERCENT))
-                : Math.add(normalizedWeights[0], (HUNDRED_PERCENT - checksum));
+        if (checksum != _HUNDRED_PERCENT) {
+            normalizedWeights[0] = checksum > _HUNDRED_PERCENT
+                ? Math.sub(normalizedWeights[0], (checksum - _HUNDRED_PERCENT))
+                : Math.add(normalizedWeights[0], (_HUNDRED_PERCENT - checksum));
         }
 
         return normalizedWeights;
     }
 
-    /// @dev Calculates the weight to be used to calculate the price of an uninitialized token depending on its amount in pool.
+    /// @dev Calculates weight used to calculate the price of an uninitialized token depending on its amount in pool.
     /// @param _tokenBalanceBeforeSwap Amount of uninitialized token in pool (before the swap)
     /// @param _minimumBalance Minimum balance set for the uninitialized token (= initialization threshold)
     /// @return Weight to be used to calculate the price of an uninitalized token.
@@ -96,9 +96,11 @@ contract IndexPoolUtils {
         bool addPremium = _tokenBalanceBeforeSwap < _minimumBalance;
 
         // if minimum balance has not been met a slight premium is added to the weight to incentivize swaps
-        // the formular for the resulting weight is: 1% * (1 + (minimumBalance - newTokenBalanceIn) / (10 * minimumBalance))
+        // the formular for the resulting weight is:
+        // 1% * (1 + (minimumBalance - newTokenBalanceIn) / (10 * minimumBalance))
         // if minimum balance is exceeded the weight is increased relative to the excess amount
-        // the formular for the resulting weight is: 1% * (1 + (minimumBalance - newTokenBalanceIn) / minimumBalance)
+        // the formular for the resulting weight is:
+        // 1% * (1 + (minimumBalance - newTokenBalanceIn) / minimumBalance)
         uint256 scalingFactor = addPremium ? 10 : 1;
 
         uint256 balanceDiff = addPremium
@@ -106,8 +108,8 @@ contract IndexPoolUtils {
             : Math.sub(_tokenBalanceBeforeSwap, _minimumBalance);
 
         uint256 incentivizationPercentage = FixedPoint.divUp(balanceDiff, (scalingFactor * _minimumBalance));
-        uint256 incentivizationFactor = Math.add(HUNDRED_PERCENT, incentivizationPercentage);
+        uint256 incentivizationFactor = Math.add(_HUNDRED_PERCENT, incentivizationPercentage);
 
-        return FixedPoint.mulUp(UNINITIALIZED_WEIGHT, incentivizationFactor);
+        return FixedPoint.mulUp(_UNINITIALIZED_WEIGHT, incentivizationFactor);
     }
 }
