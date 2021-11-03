@@ -58,80 +58,47 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
     uint256 private constant _SECONDS_IN_A_DAY = 86400;
 
-    IERC20[] internal _tokens;
+    struct NewPoolParams {
+        IVault vault;
+        string name;
+        string symbol;
+        IERC20[] tokens;
+        uint256[] normalizedWeights;
+        address[] assetManagers;
+        uint256 swapFeePercentage;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+        address owner;
+    }
 
-    // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
-    // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
-    // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
-    // solhint-disable-next-line
-    uint256[] internal scalingFactors;
-
-    // The protocol fees will always be charged using the token associated with the max weight in the pool.
-    // Since these Pools will register tokens only once, we can assume this index will be constant.
-    uint256 internal immutable _maxWeightTokenIndex;
-
-    uint256[] internal _normalizedWeights;
-
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        IERC20[] memory tokens,
-        uint256[] memory normalizedWeights,
-        address[] memory assetManagers,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
-    )
+    constructor(NewPoolParams memory params)
         BaseWeightedPool(
-            vault,
-            name,
-            symbol,
-            tokens,
-            assetManagers,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            params.vault,
+            params.name,
+            params.symbol,
+            params.tokens,
+            params.assetManagers,
+            params.swapFeePercentage,
+            params.pauseWindowDuration,
+            params.bufferPeriodDuration,
+            params.owner
         )
     {
-        uint256 numTokens = tokens.length;
-        InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
+        uint256 numTokens = params.tokens.length;
+        InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length, params.assetManagers.length);
 
         _setMiscData(_getMiscData().insertUint7(numTokens, _TOTAL_TOKENS_OFFSET));
         // Double check it fits in 7 bits
         _require(_getTotalTokens() == numTokens, Errors.MAX_TOKENS);
 
-        // Ensure  each normalized weight is above them minimum and find the token index of the maximum weight
-        uint256 normalizedSum = 0;
-        uint256 maxWeightTokenIndex = 0;
-        uint256 maxNormalizedWeight = 0;
-        for (uint8 i = 0; i < numTokens; i++) {
-            uint256 normalizedWeight = normalizedWeights[i];
-            _require(normalizedWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
-
-            normalizedSum = normalizedSum.add(normalizedWeight);
-            if (normalizedWeight > maxNormalizedWeight) {
-                maxWeightTokenIndex = i;
-                maxNormalizedWeight = normalizedWeight;
-            }
-        }
-        // Ensure that the normalized weights sum to ONE
-        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
-
-        _maxWeightTokenIndex = maxWeightTokenIndex;
-
-        _normalizedWeights = normalizedWeights;
-        // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _tokens = tokens;
-
-        for (uint8 i = 0; i < numTokens; i++) {
-            scalingFactors.push(_computeScalingFactor(tokens[i]));
-        }
-
         uint256 currentTime = block.timestamp;
-        _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights, tokens);
+        _startGradualWeightChange(
+            currentTime,
+            currentTime,
+            params.normalizedWeights,
+            params.normalizedWeights,
+            params.tokens
+        );
     }
 
     /**
@@ -159,7 +126,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         endWeights = new uint256[](totalTokens);
 
         for (uint256 i = 0; i < totalTokens; i++) {
-            endWeights[i] = _tokenState[_tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+            endWeights[i] = _tokenState[tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
         }
     }
 
@@ -256,13 +223,15 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; i++) {
-            if (desiredWeights[i] > _normalizedWeights[i]) {
-                if (diff < desiredWeights[i].sub(_normalizedWeights[i])) {
-                    diff = desiredWeights[i].sub(_normalizedWeights[i]);
+            uint256 normalizedWeight = _getNormalizedWeight(IERC20(tokens[i]));
+
+            if (desiredWeights[i] > normalizedWeight) {
+                if (diff < desiredWeights[i].sub(normalizedWeight)) {
+                    diff = desiredWeights[i].sub(normalizedWeight);
                 }
             } else {
-                if (diff < _normalizedWeights[i].sub(desiredWeights[i])) {
-                    diff = _normalizedWeights[i].sub(desiredWeights[i]);
+                if (diff < normalizedWeight.sub(desiredWeights[i])) {
+                    diff = normalizedWeight.sub(desiredWeights[i]);
                 }
             }
             normalizedSum = normalizedSum.add(desiredWeights[i]);
@@ -304,14 +273,11 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
-    function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
-        // prettier-ignore
-        for(uint i = 0; i < _tokens.length; i++){
-            if (token == _tokens[i]) {
-                return _normalizedWeights[i];
-            }
-        }
-        _revert(Errors.INVALID_TOKEN);
+    function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
+        uint256 pctProgress = _calculateWeightChangeProgress();
+        bytes32 tokenData = _getTokenData(token);
+
+        return _interpolateWeight(tokenData, pctProgress);
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
@@ -356,22 +322,31 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         return _getMiscData().decodeUint7(_TOTAL_TOKENS_OFFSET);
     }
 
-    /**
-     * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the
-     * Pool.
-     */
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        // prettier-ignore
-        for(uint i = 0; i < _tokens.length; i++){
-            if (token == _tokens[i]) {
-                return scalingFactors[i];
-            }
-        }
-
-        _revert(Errors.INVALID_TOKEN);
+        return _readScalingFactor(_getTokenData(token));
     }
 
-    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        return scalingFactors;
+    function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        uint256 numTokens = tokens.length;
+
+        scalingFactors = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            scalingFactors[i] = _readScalingFactor(_tokenState[tokens[i]]);
+        }
+    }
+
+    function _getTokenData(IERC20 token) private view returns (bytes32 tokenData) {
+        tokenData = _tokenState[token];
+
+        // A valid token can't be zero (must have non-zero weights)
+        _require(tokenData != 0, Errors.INVALID_TOKEN);
+    }
+
+    function _readScalingFactor(bytes32 tokenState) private pure returns (uint256) {
+        uint256 decimalsDifference = tokenState.decodeUint5(_DECIMAL_DIFF_OFFSET);
+
+        return FixedPoint.ONE * 10**decimalsDifference;
     }
 }
