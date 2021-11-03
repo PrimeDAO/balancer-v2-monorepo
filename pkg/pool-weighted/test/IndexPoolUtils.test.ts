@@ -178,7 +178,7 @@ describe('IndexPoolUtils', function () {
         });
       });
 
-      describe('with 60/60/30 pool to change to 0/0/20', () => {
+      describe('with 60/60/30 pool to change to ?/?/20', () => {
         const baseWeights = [0.6, 0.6, 0.3];
         const fixedWeights = [0, 0, 0.2];
 
