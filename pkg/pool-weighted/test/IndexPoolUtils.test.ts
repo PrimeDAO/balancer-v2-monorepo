@@ -168,7 +168,28 @@ describe('IndexPoolUtils', function () {
           );
         });
 
-        it('returns the correct weights 78.4/19.6/2', async () => {
+        it('returns the correct weights 40/40/20', async () => {
+          const expectedWeights = [0.4, 0.4, 0.2].map((pct) => fp(pct));
+          expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+        });
+
+        it('returns normalized weights', async () => {
+          expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+        });
+      });
+
+      describe('with 60/60/30 pool to change to 0/0/20', () => {
+        const baseWeights = [0.6, 0.6, 0.3];
+        const fixedWeights = [0, 0, 0.2];
+
+        beforeEach(async () => {
+          receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            baseWeights.map((w) => fp(w)),
+            fixedWeights.map((w) => fp(w))
+          );
+        });
+
+        it('returns the correct weights 40/40/20', async () => {
           const expectedWeights = [0.4, 0.4, 0.2].map((pct) => fp(pct));
           expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
         });
