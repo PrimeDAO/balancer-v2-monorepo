@@ -5,7 +5,7 @@ import { Contract } from '@ethersproject/contracts';
 import { fp } from '../../../pvt/helpers/src/numbers';
 
 const {
-  utils: { parseEther, formatEther },
+  utils: { parseEther },
 } = ethers;
 
 const HUNDRED_PERCENT = BigNumber.from(10).pow(18);
