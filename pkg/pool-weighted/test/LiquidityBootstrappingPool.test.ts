@@ -113,7 +113,7 @@ describe('LiquidityBootstrappingPool', function () {
       pool = await WeightedPool.create(params);
     });
 
-    it('has no asset managers', async () => {
+    it.only('has no asset managers', async () => {
       await tokens.asyncEach(async (token) => {
         const { assetManager } = await pool.getTokenInfo(token);
         expect(assetManager).to.be.zeroAddress;

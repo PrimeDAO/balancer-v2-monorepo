@@ -18,6 +18,8 @@ pragma experimental ABIEncoderV2;
 import "./BalancerErrors.sol";
 import "./CodeDeployer.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @dev Base factory for contracts whose creation code is so large that the factory cannot hold it. This happens when
  * the contract's creation code grows close to 24kB.
@@ -42,6 +44,7 @@ abstract contract BaseSplitCodeFactory {
      * @dev The creation code of a contract Foo can be obtained inside Solidity with `type(Foo).creationCode`.
      */
     constructor(bytes memory creationCode) {
+        console.log("wthin constructur of BaseSplitCodeFactory");
         uint256 creationCodeSize = creationCode.length;
 
         // We are going to deploy two contracts: one with approximately the first half of `creationCode`'s contents
@@ -99,6 +102,7 @@ abstract contract BaseSplitCodeFactory {
             mstore(creationCodeA, creationCodeSize)
             mstore(creationCodeB, lastByteA)
         }
+        console.log("constructur done");
     }
 
     /**
@@ -128,6 +132,7 @@ abstract contract BaseSplitCodeFactory {
         // overly long) right after the end of the creation code.
 
         // Immutable variables cannot be used in assembly, so we store them in the stack first.
+        console.log(">> _getCreationCodeWithArgs");
         address creationCodeContractA = _creationCodeContractA;
         uint256 creationCodeSizeA = _creationCodeSizeA;
         address creationCodeContractB = _creationCodeContractB;
@@ -135,9 +140,12 @@ abstract contract BaseSplitCodeFactory {
 
         uint256 creationCodeSize = creationCodeSizeA + creationCodeSizeB;
         uint256 constructorArgsSize = constructorArgs.length;
+        console.log(">> constructorArgsSize");
+        console.log(constructorArgsSize);
 
         uint256 codeSize = creationCodeSize + constructorArgsSize;
-
+        console.log(">> codeSize");
+        console.log(codeSize);
         assembly {
             // First, we allocate memory for `code` by retrieving the free memory pointer and then moving it ahead of
             // `code` by the size of the creation code plus constructor arguments, and 32 bytes for the array length.
@@ -170,13 +178,17 @@ abstract contract BaseSplitCodeFactory {
      * contract's constructor arguments, in order.
      */
     function _create(bytes memory constructorArgs) internal virtual returns (address) {
+        console.log("> BaseSplitCodeFactory");
         bytes memory creationCode = _getCreationCodeWithArgs(constructorArgs);
+        console.log(">> getCreationCode.length");
+        console.log(creationCode.length);
 
         address destination;
         assembly {
             destination := create(0, add(creationCode, 32), mload(creationCode))
         }
-
+        console.log(">> after first assembly block");
+        console.log(destination);
         if (destination == address(0)) {
             // Bubble up inner revert reason
             // solhint-disable-next-line no-inline-assembly
@@ -185,6 +197,9 @@ abstract contract BaseSplitCodeFactory {
                 revert(0, returndatasize())
             }
         }
+        console.log(">> after second assembly block");
+        console.log(">> destination");
+        console.log(destination);
 
         return destination;
     }

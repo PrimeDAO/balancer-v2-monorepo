@@ -58,7 +58,6 @@ export default {
       owner,
       from,
     } = params;
-
     let result: Promise<Contract>;
 
     switch (poolType) {
@@ -135,7 +134,6 @@ export default {
               tokens: tokens.addresses,
               normalizedWeights: weights,
               swapFeePercentage: swapFeePercentage,
-              assetManagers: assetManagers,
               pauseWindowDuration: pauseWindowDuration,
               bufferPeriodDuration: bufferPeriodDuration,
               owner: TypesConverter.toAddress(owner),
@@ -180,7 +178,6 @@ export default {
       owner,
       from,
     } = params;
-
     let result: Promise<Contract>;
 
     switch (poolType) {
@@ -240,7 +237,37 @@ export default {
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+        console.log(event.args.pool);
         result = deployedAt('v2-pool-weighted/InvestmentPool', event.args.pool);
+        break;
+      }
+      case WeightedPoolType.INDEX_POOL: {
+        console.log('blip');
+        const factory = await deploy('v2-pool-weighted/IndexPoolFactory', {
+          args: [vault.address],
+          from,
+        });
+        console.log('blap');
+        // string memory name,
+        // string memory symbol,
+        // IERC20[] memory tokens,
+        // uint256[] memory weights,
+        // uint256 swapFeePercentage,
+        // address owner,
+        // bool swapEnabledOnStart
+        const tx = await factory.create(
+          NAME,
+          SYMBOL,
+          tokens.addresses,
+          weights,
+          swapFeePercentage,
+          TypesConverter.toAddress(owner),
+          swapEnabledOnStart
+        );
+        console.log('blop');
+        const receipt = await tx.wait();
+        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+        result = deployedAt('v2-pool-weighted/IndexPool', event.args.pool);
         break;
       }
       default: {
