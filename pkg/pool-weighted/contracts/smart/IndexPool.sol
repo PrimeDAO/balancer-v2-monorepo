@@ -54,6 +54,9 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
     // |MSB                                          LSB|
     mapping(IERC20 => bytes32) private _tokenState;
 
+    // TODO: check if this can be optimized
+    mapping(IERC20 => uint256) private _minimumBalances;
+
     // Offsets for data elements in _tokenState
     uint256 private constant _START_WEIGHT_OFFSET = 0;
     uint256 private constant _END_WEIGHT_OFFSET = 64;
@@ -244,10 +247,10 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
     }
 
     function reindexTokens(
-        address[] calldata tokens,
+        IERC20[] calldata tokens,
         uint256[] calldata desiredWeights,
         uint256[] calldata minimumBalances
-    ) external pure {
+    ) external {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length, minimumBalances.length);
         uint256 normalizedSum = 0;
@@ -261,14 +264,16 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
             normalizedSum = normalizedSum.add(desiredWeights[i]);
 
             // check if token is new token
-            bytes32 currentToken = _tokenState[IERC20(tokens[i])];
-            if (currentToken.decodeUint32(_START_TIME_OFFSET) == 0) {
+            bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
+            if (currentTokenState.decodeUint32(_START_TIME_OFFSET) == 0) {
                 // currentToken is new token
                 // 1. set it to uninitialized
-                currentToken = currentToken.insertBool(true, _UNINITIALIZED_OFFSET);
+                currentTokenState = currentTokenState.insertBool(true, _UNINITIALIZED_OFFSET);
+                _tokenState[IERC20(tokens[i])] = currentTokenState;
                 // 2. add to fixedWeights
                 fixedWeights[i] = desiredWeights[i];
                 // TODO: store minimumBalance
+                _minimumBalances[tokens[i]] = minimumBalances[i];
             } else {
                 // currentToken is existing token
                 baseWeights[i] = desiredWeights[i];
