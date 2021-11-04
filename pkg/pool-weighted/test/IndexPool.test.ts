@@ -26,7 +26,7 @@ const getTimeForWeightChange = (weightDifference: number) => {
   return (weightDifference / 1e18) * 86400 * 100;
 };
 
-describe.only('IndexPool', function () {
+describe('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress, vault: Vault;
 
   before('setup signers', async () => {
@@ -200,7 +200,7 @@ describe.only('IndexPool', function () {
     });
   });
 
-  describe('#reindexTokens', () => {
+  describe.only('#reindexTokens', () => {
     sharedBeforeEach('deploy pool', async () => {
       vault = await Vault.create();
       //   string memory name,
