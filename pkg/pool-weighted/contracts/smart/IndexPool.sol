@@ -263,11 +263,11 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         if (pctProgress >= FixedPoint.ONE) return endWeight;
 
         if (startWeight > endWeight) {
-            uint256 weightDelta = pctProgress.mulDown(startWeight - endWeight);
-            return startWeight - weightDelta;
+            uint256 weightDelta = pctProgress.mulDown(startWeight.sub(endWeight));
+            return startWeight.sub(weightDelta);
         } else {
-            uint256 weightDelta = pctProgress.mulDown(endWeight - startWeight);
-            return startWeight + weightDelta;
+            uint256 weightDelta = pctProgress.mulDown(endWeight.sub(startWeight));
+            return startWeight.add(weightDelta);
         }
     }
 
