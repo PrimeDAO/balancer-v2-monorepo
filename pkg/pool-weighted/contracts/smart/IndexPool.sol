@@ -172,12 +172,10 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
 
-            IERC20 token = tokens[i];
-
-            _tokenState[token] = tokenState
+            _tokenState[IERC20(tokens[i])] = tokenState
                 .insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET)
                 .insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET)
-                .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
+                .insertUint5(uint256(18).sub(ERC20(address(tokens[i])).decimals()), _DECIMAL_DIFF_OFFSET);
 
             normalizedSum = normalizedSum.add(endWeight);
         }
