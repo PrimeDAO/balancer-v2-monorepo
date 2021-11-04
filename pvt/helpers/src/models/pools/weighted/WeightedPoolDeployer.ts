@@ -128,16 +128,18 @@ export default {
       case WeightedPoolType.INDEX_POOL: {
         result = deploy('v2-pool-weighted/IndexPool', {
           args: [
-            vault.address,
-            NAME,
-            SYMBOL,
-            tokens.addresses,
-            weights,
-            assetManagers,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            TypesConverter.toAddress(owner),
+            {
+              vault: vault.address,
+              name: NAME,
+              symbol: SYMBOL,
+              tokens: tokens.addresses,
+              normalizedWeights: weights,
+              swapFeePercentage: swapFeePercentage,
+              assetManagers: assetManagers,
+              pauseWindowDuration: pauseWindowDuration,
+              bufferPeriodDuration: bufferPeriodDuration,
+              owner: TypesConverter.toAddress(owner),
+            },
           ],
           from,
         });
