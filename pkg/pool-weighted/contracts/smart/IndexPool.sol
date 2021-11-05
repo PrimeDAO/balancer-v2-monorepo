@@ -32,6 +32,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
     using WeightCompression for uint256;
 
     uint256 private constant _MAX_TOKENS = 50;
+    uint256 private constant _INITIAL_WEIGHT = 10**16;
 
     // Use the _miscData slot in BasePool
     // First 64 bits are reserved for the swap fee
@@ -257,10 +258,11 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
 
         // assemble params for IndexPoolUtils._normalizeInterpolated
         uint256[] memory baseWeights = new uint256[](tokens.length);
-        uint256[] memory fixedWeights = new uint256[](tokens.length);
+        uint256[] memory fixedStartWeights = new uint256[](tokens.length);
+        uint256[] memory fixedEndWeights = new uint256[](tokens.length);
 
+        // gather params for pool registry to be used by _registerNewTokensWithVault
         IERC20[] memory newTokensContainer = new IERC20[](tokens.length);
-
         uint8 newTokenCounter;
 
         for (uint8 i = 0; i < tokens.length; i++) {
@@ -272,8 +274,9 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
 
             if (currentTokenState.decodeUint32(_START_TIME_OFFSET) == 0) {
                 // currentToken is new token
-                // add to fixedWeights (memory)
-                fixedWeights[i] = desiredWeights[i];
+                // add to fixedStartWeights (memory)
+                fixedStartWeights[i] = _INITIAL_WEIGHT;
+                fixedEndWeights[i] = desiredWeights[i];
                 // set it to uninitialized (state)
                 currentTokenState = currentTokenState.insertBool(true, _UNINITIALIZED_OFFSET);
                 _tokenState[IERC20(tokens[i])] = currentTokenState;
@@ -288,9 +291,8 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
                 baseWeights[i] = _getNormalizedWeight(IERC20(tokens[i]));
             }
         }
-        {
-            _storeNewTokens(newTokensContainer, newTokenCounter);
-        }
+
+        _registerNewTokensWithVault(newTokensContainer, newTokenCounter);
 
         console.log("baseWeights");
         console.log(baseWeights[0]);
@@ -298,26 +300,34 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         console.log(baseWeights[2]);
         console.log(baseWeights[3]);
         console.log(baseWeights[4]);
-        console.log("fixedWeights");
-        console.log(fixedWeights[0]);
-        console.log(fixedWeights[1]);
-        console.log(fixedWeights[2]);
-        console.log(fixedWeights[3]);
-        console.log(fixedWeights[4]);
-        uint256[] memory newStartWeights = _normalizeInterpolated(baseWeights, fixedWeights);
-        console.log("newStartWeights");
-        console.log(newStartWeights[0]);
-        console.log(newStartWeights[1]);
-        console.log(newStartWeights[2]);
-        console.log(newStartWeights[3]);
-        console.log(newStartWeights[4]);
+        console.log("fixedStartWeights");
+        console.log(fixedStartWeights[0]);
+        console.log(fixedStartWeights[1]);
+        console.log(fixedStartWeights[2]);
+        console.log(fixedStartWeights[3]);
+        console.log(fixedStartWeights[4]);
+        console.log("fixedEndWeights");
+        console.log(fixedEndWeights[0]);
+        console.log(fixedEndWeights[1]);
+        console.log(fixedEndWeights[2]);
+        console.log(fixedEndWeights[3]);
+        console.log(fixedEndWeights[4]);
+
+        // here I get the starting weights for my new weight change, that should be the weights
+        // as applicable immediately after the first weight change
+        // e.g. 49.5/49.5/1 after a tokens has been added to a 50/50 pool
+        uint256[] memory newStartWeights = _normalizeInterpolated(baseWeights, fixedStartWeights);
+
+        // TODO: here we will need the endWeights as long as they apply until the new token becomes initialized
+        // e.g. 45/45/10 after new token becomes initialized and aims for fina target weight of 10%
+        uint256[] memory newEndWeights = _normalizeInterpolated(baseWeights, fixedEndWeights);
 
         //setting the initial
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(currentTime, currentTime, newStartWeights, newStartWeights, tokens);
     }
 
-    function _storeNewTokens(IERC20[] memory newTokensContainer, uint8 amountNewTokens) internal {
+    function _registerNewTokensWithVault(IERC20[] memory newTokensContainer, uint8 amountNewTokens) internal {
         IERC20[] memory newTokens = new IERC20[](amountNewTokens);
 
         for (uint8 i = 0; i < amountNewTokens; i++) {
