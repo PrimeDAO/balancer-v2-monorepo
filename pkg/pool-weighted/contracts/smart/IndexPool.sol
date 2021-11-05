@@ -223,7 +223,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
         require(block.timestamp >= endTime, "Weight change is already in process");
         InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
-        uint256 changeTime = _calcReweighingTime(tokens, desiredWeights);
+        uint256 changeTime = _calcReweighTime(tokens, desiredWeights);
         _updateWeightsGradually(block.timestamp, block.timestamp.add(changeTime), desiredWeights);
     }
 
@@ -272,24 +272,24 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
 
         _registerNewTokensWithVault(newTokensContainer, newTokenCounter);
 
-        console.log("baseWeights");
-        console.log(baseWeights[0]);
-        console.log(baseWeights[1]);
-        console.log(baseWeights[2]);
-        console.log(baseWeights[3]);
-        console.log(baseWeights[4]);
-        console.log("fixedStartWeights");
-        console.log(fixedStartWeights[0]);
-        console.log(fixedStartWeights[1]);
-        console.log(fixedStartWeights[2]);
-        console.log(fixedStartWeights[3]);
-        console.log(fixedStartWeights[4]);
-        console.log("fixedEndWeights");
-        console.log(fixedEndWeights[0]);
-        console.log(fixedEndWeights[1]);
-        console.log(fixedEndWeights[2]);
-        console.log(fixedEndWeights[3]);
-        console.log(fixedEndWeights[4]);
+        // console.log("baseWeights");
+        // console.log(baseWeights[0]);
+        // console.log(baseWeights[1]);
+        // console.log(baseWeights[2]);
+        // console.log(baseWeights[3]);
+        // console.log(baseWeights[4]);
+        // console.log("fixedStartWeights");
+        // console.log(fixedStartWeights[0]);
+        // console.log(fixedStartWeights[1]);
+        // console.log(fixedStartWeights[2]);
+        // console.log(fixedStartWeights[3]);
+        // console.log(fixedStartWeights[4]);
+        // console.log("fixedEndWeights");
+        // console.log(fixedEndWeights[0]);
+        // console.log(fixedEndWeights[1]);
+        // console.log(fixedEndWeights[2]);
+        // console.log(fixedEndWeights[3]);
+        // console.log(fixedEndWeights[4]);
 
         // here I get the starting weights for my new weight change, that should be the weights
         // as applicable immediately after the first weight change
@@ -309,7 +309,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
     /// @param tokens Array with addresses of tokens.
     /// @param desiredWeights Array with desired weights of tokens. Must be in same order.
     /// @return changeTime Time horizon for the rebalancing period
-    function _calcReweighingTime(address[] calldata tokens, uint256[] calldata desiredWeights)
+    function _calcReweighTime(address[] calldata tokens, uint256[] calldata desiredWeights)
         internal
         returns (uint256 changeTime)
     {
@@ -331,6 +331,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
             }
             normalizedSum = normalizedSum.add(desiredWeights[i]);
         }
+
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
         changeTime = ((diff.mulDown(_SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
     }
