@@ -246,12 +246,14 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
     }
 
     function reindexTokens(
-        IERC20[] calldata tokens,
-        uint256[] calldata desiredWeights,
-        uint256[] calldata minimumBalances
+        IERC20[] memory tokens,
+        uint256[] memory desiredWeights,
+        uint256[] memory minimumBalances
     ) external {
-        InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length, minimumBalances.length);
-        uint256 normalizedSum = 0;
+        // InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length, minimumBalances.length);
+
+        // get existing tokens
+        // (IERC20[] memory existingTokens, , ) = getVault().getPoolTokens(getPoolId());
 
         // assemble params for IndexPoolUtils._normalizeInterpolated
         uint256[] memory baseWeights = new uint256[](tokens.length);
@@ -261,7 +263,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
 
         for (uint8 i = 0; i < tokens.length; i++) {
             require(minimumBalances[i] != 0, "Invalid zero minimum balance");
-            normalizedSum = normalizedSum.add(desiredWeights[i]);
+            // normalizedSum = normalizedSum.add(desiredWeights[i]);
 
             // check if token is new token
             bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
@@ -281,16 +283,38 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
                 newTokenCounter++;
             } else {
                 // currentToken is existing token
-                baseWeights[i] = desiredWeights[i];
+                baseWeights[i] = _getNormalizedWeight(IERC20(tokens[i]));
             }
         }
+        {
+            IERC20[] memory newTokens = _filterNewTokens(newTokensContainer, newTokenCounter);
+            getVault().registerTokens(getPoolId(), newTokens, new address[](newTokens.length));
+        }
 
-        IERC20[] memory newTokens = _filterNewTokens(newTokensContainer, newTokenCounter);
-        getVault().registerTokens(getPoolId(), newTokens, new address[](newTokens.length));
-
-        // uint256[] memory immediateNewWeights = _normalizeInterpolated(baseWeights, fixedWeights);
-
-        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
+        console.log("baseWeights");
+        console.log(baseWeights[0]);
+        console.log(baseWeights[1]);
+        console.log(baseWeights[2]);
+        console.log(baseWeights[3]);
+        console.log(baseWeights[4]);
+        console.log("fixedWeights");
+        console.log(fixedWeights[0]);
+        console.log(fixedWeights[1]);
+        console.log(fixedWeights[2]);
+        console.log(fixedWeights[3]);
+        console.log(fixedWeights[4]);
+        uint256[] memory newStartWeights = _normalizeInterpolated(baseWeights, fixedWeights);
+        console.log("newStartWeights");
+        console.log(newStartWeights[0]);
+        console.log(newStartWeights[1]);
+        console.log(newStartWeights[2]);
+        console.log(newStartWeights[3]);
+        console.log(newStartWeights[4]);
+        // uint256 startTime,
+        // uint256 endTime,
+        // uint256[] memory endWeights
+        uint256 currentTime = block.timestamp;
+        _startGradualWeightChange(currentTime, currentTime, newStartWeights, newStartWeights, tokens);
     }
 
     function _filterNewTokens(IERC20[] memory newTokensContainer, uint8 amountNewTokens)

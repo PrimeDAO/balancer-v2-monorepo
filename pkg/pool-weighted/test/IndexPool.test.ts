@@ -273,18 +273,27 @@ describe('IndexPool', function () {
     context.only('when adding one new token', () => {
       it('registers the additional token in the vault', async () => {
         const reindexTokens = allTokens.subset(5).tokens.map((token) => token.address);
-        const reindexWeights = [fp(0.2), fp(0.55), fp(0.1), fp(0.05), fp(0.1)];
+        const reindexWeights = [0, 0, 0, 0, fp(0.1)];
         const minimumBalances = [1000, 1000, 1000, 1000, 1000];
         await pool.reindexTokens(reindexTokens, reindexWeights, minimumBalances);
 
         const poolId = await pool.getPoolId();
-        const { tokens: tokensFromVault, balances, lastChangeBlock } = await vault.getPoolTokens(poolId);
+        const { tokens: tokensFromVault } = await vault.getPoolTokens(poolId);
 
         expect(tokensFromVault).to.have.members(reindexTokens);
-        // await expect(pool.reindexTokens(addresses, weights, minimumBalances)).to.be.revertedWith(
-        //   'Invalid zero minimum balance'
-        // );
       });
+
+      // it('sets the correct endWeights', async () => {
+      //   const reindexTokens = allTokens.subset(5).tokens.map((token) => token.address);
+      //   const reindexWeights = [fp(0.2), fp(0.55), fp(0.1), fp(0.05), fp(0.1)];
+      //   const minimumBalances = [1000, 1000, 1000, 1000, 1000];
+      //   await pool.reindexTokens(reindexTokens, reindexWeights, minimumBalances);
+
+      //   const poolId = await pool.getPoolId();
+      //   const { tokens: tokensFromVault } = await vault.getPoolTokens(poolId);
+
+      //   expect(tokensFromVault).to.have.members(reindexTokens);
+      // });
     });
   });
 });
