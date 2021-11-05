@@ -222,27 +222,8 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
     function reweighTokens(address[] calldata tokens, uint256[] calldata desiredWeights) public {
         uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
         require(block.timestamp >= endTime, "Weight change is already in process");
-        uint256 diff = 0;
-        uint256 numTokens = tokens.length;
-        InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length);
-
-        uint256 normalizedSum = 0;
-        for (uint8 i = 0; i < numTokens; i++) {
-            uint256 normalizedWeight = _getNormalizedWeight(IERC20(tokens[i]));
-
-            if (desiredWeights[i] > normalizedWeight) {
-                if (diff < desiredWeights[i].sub(normalizedWeight)) {
-                    diff = desiredWeights[i].sub(normalizedWeight);
-                }
-            } else {
-                if (diff < normalizedWeight.sub(desiredWeights[i])) {
-                    diff = normalizedWeight.sub(desiredWeights[i]);
-                }
-            }
-            normalizedSum = normalizedSum.add(desiredWeights[i]);
-        }
-        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
-        uint256 changeTime = ((diff.mulDown(_SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
+        InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
+        uint256 changeTime = _calcReweighingTime(tokens, desiredWeights);
         _updateWeightsGradually(block.timestamp, block.timestamp.add(changeTime), desiredWeights);
     }
 
@@ -251,10 +232,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         uint256[] memory desiredWeights,
         uint256[] memory minimumBalances
     ) external {
-        // InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length, minimumBalances.length);
-
-        // get existing tokens
-        // (IERC20[] memory existingTokens, , ) = getVault().getPoolTokens(getPoolId());
+        InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length, minimumBalances.length);
 
         // assemble params for IndexPoolUtils._normalizeInterpolated
         uint256[] memory baseWeights = new uint256[](tokens.length);
@@ -269,9 +247,9 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
             require(minimumBalances[i] != 0, "Invalid zero minimum balance");
             // normalizedSum = normalizedSum.add(desiredWeights[i]);
 
-            // check if token is new token
             bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
 
+            // check if token is new token by checking if no startTime is set
             if (currentTokenState.decodeUint32(_START_TIME_OFFSET) == 0) {
                 // currentToken is new token
                 // add to fixedStartWeights (memory)
@@ -287,7 +265,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
                 // increment counter for new tokens (memory)
                 newTokenCounter++;
             } else {
-                // currentToken is existing token
+                // currentToken is existing (not new) token
                 baseWeights[i] = _getNormalizedWeight(IERC20(tokens[i]));
             }
         }
@@ -325,6 +303,36 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         //setting the initial
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(currentTime, currentTime, newStartWeights, newStartWeights, tokens);
+    }
+
+    /// @dev Calculates the time horizon for a rebasing based on max weight change.
+    /// @param tokens Array with addresses of tokens.
+    /// @param desiredWeights Array with desired weights of tokens. Must be in same order.
+    /// @return changeTime Time horizon for the rebalancing period
+    function _calcReweighingTime(address[] calldata tokens, uint256[] calldata desiredWeights)
+        internal
+        returns (uint256 changeTime)
+    {
+        uint256 diff = 0;
+        uint256 numTokens = tokens.length;
+
+        uint256 normalizedSum = 0;
+        for (uint8 i = 0; i < numTokens; i++) {
+            uint256 normalizedWeight = _getNormalizedWeight(IERC20(tokens[i]));
+
+            if (desiredWeights[i] > normalizedWeight) {
+                if (diff < desiredWeights[i].sub(normalizedWeight)) {
+                    diff = desiredWeights[i].sub(normalizedWeight);
+                }
+            } else {
+                if (diff < normalizedWeight.sub(desiredWeights[i])) {
+                    diff = normalizedWeight.sub(desiredWeights[i]);
+                }
+            }
+            normalizedSum = normalizedSum.add(desiredWeights[i]);
+        }
+        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
+        changeTime = ((diff.mulDown(_SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
     }
 
     function _registerNewTokensWithVault(IERC20[] memory newTokensContainer, uint8 amountNewTokens) internal {
