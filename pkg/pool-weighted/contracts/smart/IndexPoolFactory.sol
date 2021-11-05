@@ -23,6 +23,10 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.
 import "./IndexPool.sol";
 
 contract IndexPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+    // constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(LiquidityBootstrappingPool).creationCode) {
+    //     // solhint-disable-previous-line no-empty-blocks
+    // }
+
     constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(IndexPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -40,20 +44,20 @@ contract IndexPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
         bool swapEnabledOnStart
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
-
         return
             _create(
                 abi.encode(
-                    getVault(),
-                    name,
-                    symbol,
-                    tokens,
-                    weights,
-                    swapFeePercentage,
-                    pauseWindowDuration,
-                    bufferPeriodDuration,
-                    owner,
-                    swapEnabledOnStart
+                    IndexPool.NewPoolParams({
+                        vault: getVault(),
+                        name: name,
+                        symbol: symbol,
+                        tokens: tokens,
+                        normalizedWeights: weights,
+                        swapFeePercentage: swapFeePercentage,
+                        pauseWindowDuration: pauseWindowDuration,
+                        bufferPeriodDuration: bufferPeriodDuration,
+                        owner: owner
+                    })
                 )
             );
     }

@@ -71,7 +71,6 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         string symbol;
         IERC20[] tokens;
         uint256[] normalizedWeights;
-        address[] assetManagers;
         uint256 swapFeePercentage;
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
@@ -84,7 +83,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
             params.name,
             params.symbol,
             params.tokens,
-            params.assetManagers,
+            new address[](params.tokens.length),
             params.swapFeePercentage,
             params.pauseWindowDuration,
             params.bufferPeriodDuration,
@@ -92,7 +91,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         )
     {
         uint256 numTokens = params.tokens.length;
-        InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length, params.assetManagers.length);
+        InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
         _setMiscData(_getMiscData().insertUint7(numTokens, _TOTAL_TOKENS_OFFSET));
         // Double check it fits in 7 bits
