@@ -258,7 +258,9 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         // assemble params for IndexPoolUtils._normalizeInterpolated
         uint256[] memory baseWeights = new uint256[](tokens.length);
         uint256[] memory fixedWeights = new uint256[](tokens.length);
+
         IERC20[] memory newTokensContainer = new IERC20[](tokens.length);
+
         uint8 newTokenCounter;
 
         for (uint8 i = 0; i < tokens.length; i++) {
@@ -287,8 +289,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
             }
         }
         {
-            IERC20[] memory newTokens = _filterNewTokens(newTokensContainer, newTokenCounter);
-            getVault().registerTokens(getPoolId(), newTokens, new address[](newTokens.length));
+            _storeNewTokens(newTokensContainer, newTokenCounter);
         }
 
         console.log("baseWeights");
@@ -310,23 +311,20 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         console.log(newStartWeights[2]);
         console.log(newStartWeights[3]);
         console.log(newStartWeights[4]);
-        // uint256 startTime,
-        // uint256 endTime,
-        // uint256[] memory endWeights
+
+        //setting the initial
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(currentTime, currentTime, newStartWeights, newStartWeights, tokens);
     }
 
-    function _filterNewTokens(IERC20[] memory newTokensContainer, uint8 amountNewTokens)
-        internal
-        pure
-        returns (IERC20[] memory shortenedAddresses)
-    {
-        shortenedAddresses = new IERC20[](amountNewTokens);
+    function _storeNewTokens(IERC20[] memory newTokensContainer, uint8 amountNewTokens) internal {
+        IERC20[] memory newTokens = new IERC20[](amountNewTokens);
 
         for (uint8 i = 0; i < amountNewTokens; i++) {
-            shortenedAddresses[i] = newTokensContainer[i];
+            newTokens[i] = newTokensContainer[i];
         }
+
+        getVault().registerTokens(getPoolId(), newTokens, new address[](newTokens.length));
     }
 
     function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private pure returns (uint256 finalWeight) {
