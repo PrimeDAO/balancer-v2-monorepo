@@ -270,13 +270,17 @@ describe('IndexPool', function () {
       });
     });
 
-    context('when adding one new token', () => {
-      it('registers the new token in the vault', async () => {
-        const addresses = allTokens.subset(5).tokens.map((token) => token.address);
-        const weights = [fp(0.2), fp(0.55), fp(0.1), fp(0.05), fp(0.1)];
-
+    context.only('when adding one new token', () => {
+      it('registers the additional token in the vault', async () => {
+        const reindexTokens = allTokens.subset(5).tokens.map((token) => token.address);
+        const reindexWeights = [fp(0.2), fp(0.55), fp(0.1), fp(0.05), fp(0.1)];
         const minimumBalances = [1000, 1000, 1000, 1000, 1000];
-        await pool.reindexTokens(addresses, weights, minimumBalances);
+        await pool.reindexTokens(reindexTokens, reindexWeights, minimumBalances);
+
+        const poolId = await pool.getPoolId();
+        const { tokens: tokensFromVault, balances, lastChangeBlock } = await vault.getPoolTokens(poolId);
+
+        expect(tokensFromVault).to.equal(reindexTokens);
         // await expect(pool.reindexTokens(addresses, weights, minimumBalances)).to.be.revertedWith(
         //   'Invalid zero minimum balance'
         // );
