@@ -71,6 +71,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         string symbol;
         IERC20[] tokens;
         uint256[] normalizedWeights;
+        address[] assetManagers;
         uint256 swapFeePercentage;
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
@@ -83,7 +84,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
             params.name,
             params.symbol,
             params.tokens,
-            new address[](params.tokens.length),
+            params.assetManagers,
             params.swapFeePercentage,
             params.pauseWindowDuration,
             params.bufferPeriodDuration,
@@ -91,8 +92,8 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         )
     {
         uint256 numTokens = params.tokens.length;
-        console.log("KEEEEK");
-        InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
+        InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length, params.assetManagers.length);
+
         _setMiscData(_getMiscData().insertUint7(numTokens, _TOTAL_TOKENS_OFFSET));
         // Double check it fits in 7 bits
         _require(_getTotalTokens() == numTokens, Errors.MAX_TOKENS);
@@ -251,10 +252,6 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         uint256[] calldata minimumBalances
     ) external {
         uint256 numTokens = tokens.length;
-        console.log("sluuu");
-        console.log(numTokens);
-        console.log(desiredWeights.length);
-        console.log(minimumBalances.length);
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length, minimumBalances.length);
         uint256 normalizedSum = 0;
 
@@ -266,21 +263,17 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
             require(minimumBalances[i] != 0, "Invalid zero minimum balance");
             normalizedSum = normalizedSum.add(desiredWeights[i]);
 
-            bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
             // check if token is new token
+            bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
             if (currentTokenState.decodeUint32(_START_TIME_OFFSET) == 0) {
                 // currentToken is new token
                 // 1. set it to uninitialized
                 currentTokenState = currentTokenState.insertBool(true, _UNINITIALIZED_OFFSET);
-                // TODO: reduce writings to storage
                 _tokenState[IERC20(tokens[i])] = currentTokenState;
                 // 2. add to fixedWeights
                 fixedWeights[i] = desiredWeights[i];
-                // 3. store minimumBalance
+                // TODO: store minimumBalance
                 _minimumBalances[tokens[i]] = minimumBalances[i];
-                // TODO: register in the vault
-                address[] memory assetManagers;
-                getVault().registerTokens(getPoolId(), tokens, assetManagers);
             } else {
                 // currentToken is existing token
                 baseWeights[i] = desiredWeights[i];
@@ -291,11 +284,6 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
 
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
     }
-
-    // function _addTokenState(bytes32 addTokenState, IERC20 addToken) internal returns{
-    //     addTokenState = addTokenState.insertBool(true, _UNINITIALIZED_OFFSET);
-    //     _tokenState[addToken] = addTokenState;
-    // }
 
     function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private pure returns (uint256 finalWeight) {
         uint256 startWeight = tokenData.decodeUint64(_START_WEIGHT_OFFSET).uncompress64();

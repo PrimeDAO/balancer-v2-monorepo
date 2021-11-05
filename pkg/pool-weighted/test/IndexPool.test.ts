@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { range } from 'lodash';
@@ -27,7 +27,7 @@ const getTimeForWeightChange = (weightDifference: number) => {
 };
 
 describe('IndexPool', function () {
-  let owner: SignerWithAddress, other: SignerWithAddress, vault: Vault;
+  let owner: SignerWithAddress, other: SignerWithAddress;
 
   before('setup signers', async () => {
     [, owner, other] = await ethers.getSigners();
@@ -200,33 +200,14 @@ describe('IndexPool', function () {
     });
   });
 
-  describe.only('#reindexTokens', () => {
+  describe('#reindexTokens', () => {
     sharedBeforeEach('deploy pool', async () => {
-      vault = await Vault.create();
-      //   string memory name,
-      //   string memory symbol,
-      //   IERC20[] memory tokens,
-      //   uint256[] memory weights,
-      //   uint256 swapFeePercentage,
-      //   address owner,
-      //   bool swapEnabledOnStart
-
-      // const params = {
-      //   tokens,
-      //   weights,
-      //   owner,
-      //   poolType: WeightedPoolType.INDEX_POOL,
-      //   swapEnabledOnStart: false,
-      //   fromFactory: true,
-      //   vault,
-      // };
       const params = {
         tokens,
         weights,
         owner,
         poolType: WeightedPoolType.INDEX_POOL,
-        fromFactory: true,
-        vault,
+        swapEnabledOnStart: false,
       };
       pool = await WeightedPool.create(params);
     });
@@ -287,8 +268,8 @@ describe('IndexPool', function () {
       });
     });
 
-    context('when adding one new token', () => {
-      it('registers the new token in the vault', async () => {
+    context.only('when adding one new token', () => {
+      it('?????', async () => {
         const addresses = allTokens.subset(5).tokens.map((token) => token.address);
         const weights = [fp(0.2), fp(0.55), fp(0.1), fp(0.05), fp(0.1)];
 

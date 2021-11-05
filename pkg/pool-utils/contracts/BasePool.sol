@@ -30,8 +30,6 @@ import "@balancer-labs/v2-asset-manager-utils/contracts/IAssetManager.sol";
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
 
-import "hardhat/console.sol";
-
 // solhint-disable max-states-count
 
 /**
@@ -94,7 +92,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         BasePoolAuthorization(owner)
         TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {
-        console.log("> BaseBool.sol");
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _getMaxTokens(), Errors.MAX_TOKENS);
 
@@ -109,7 +106,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
         bytes32 poolId = vault.registerPool(specialization);
 
-        // IMPORTANT!!
         vault.registerTokens(poolId, tokens, assetManagers);
 
         // Set immutable state variables - these cannot be read from during construction

@@ -646,8 +646,6 @@ export default class WeightedPool {
     normalizedWeights: BigNumberish[],
     minimumBalances: BigNumberish[]
   ): Promise<ContractTransaction> {
-    console.log(this.instance);
-    console.log('tschacka');
     return await this.instance.reindexTokens(tokens, normalizedWeights, minimumBalances);
   }
 }

@@ -18,8 +18,6 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BaseSplitCodeFactory.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @dev Same as `BasePoolFactory`, for Pools whose creation code is so large that the factory cannot hold it.
  */
@@ -30,7 +28,6 @@ abstract contract BasePoolSplitCodeFactory is BaseSplitCodeFactory {
     event PoolCreated(address indexed pool);
 
     constructor(IVault vault, bytes memory creationCode) BaseSplitCodeFactory(creationCode) {
-        console.log("> BasePoolSplitCodeFactory");
         _vault = vault;
     }
 
@@ -49,9 +46,8 @@ abstract contract BasePoolSplitCodeFactory is BaseSplitCodeFactory {
     }
 
     function _create(bytes memory constructorArgs) internal override returns (address) {
-        console.log(" > BasePoolSplitCodeFactory");
         address pool = super._create(constructorArgs);
-        console.log(" >> pool created");
+
         _isPoolFromFactory[pool] = true;
         emit PoolCreated(pool);
 

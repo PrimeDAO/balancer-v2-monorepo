@@ -22,13 +22,7 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.
 
 import "./IndexPool.sol";
 
-import "hardhat/console.sol";
-
 contract IndexPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    // constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(LiquidityBootstrappingPool).creationCode) {
-    //     // solhint-disable-previous-line no-empty-blocks
-    // }
-
     constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(IndexPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -45,15 +39,7 @@ contract IndexPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
         address owner,
         bool swapEnabledOnStart
     ) external returns (address) {
-        console.log("> IndexPoolFactory");
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
-        console.log(name);
-        console.log(symbol);
-        console.log(tokens.length);
-        console.log(weights.length);
-        console.log(swapFeePercentage);
-        console.log(owner);
-        console.log(swapEnabledOnStart);
 
         return
             _create(
