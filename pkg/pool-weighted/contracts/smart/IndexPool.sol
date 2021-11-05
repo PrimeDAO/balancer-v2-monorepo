@@ -219,7 +219,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
     }
 
-    function reweighTokens(address[] calldata tokens, uint256[] calldata desiredWeights) public {
+    function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public {
         uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
         require(block.timestamp >= endTime, "Weight change is already in process");
         InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
@@ -272,44 +272,30 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
 
         _registerNewTokensWithVault(newTokensContainer, newTokenCounter);
 
-        // console.log("baseWeights");
-        // console.log(baseWeights[0]);
-        // console.log(baseWeights[1]);
-        // console.log(baseWeights[2]);
-        // console.log(baseWeights[3]);
-        // console.log(baseWeights[4]);
-        // console.log("fixedStartWeights");
-        // console.log(fixedStartWeights[0]);
-        // console.log(fixedStartWeights[1]);
-        // console.log(fixedStartWeights[2]);
-        // console.log(fixedStartWeights[3]);
-        // console.log(fixedStartWeights[4]);
-        // console.log("fixedEndWeights");
-        // console.log(fixedEndWeights[0]);
-        // console.log(fixedEndWeights[1]);
-        // console.log(fixedEndWeights[2]);
-        // console.log(fixedEndWeights[3]);
-        // console.log(fixedEndWeights[4]);
-
-        // here I get the starting weights for my new weight change, that should be the weights
-        // as applicable immediately after the first weight change
-        // e.g. 49.5/49.5/1 after a tokens has been added to a 50/50 pool
-        uint256[] memory newStartWeights = _normalizeInterpolated(baseWeights, fixedStartWeights);
-
-        // TODO: here we will need the endWeights as long as they apply until the new token becomes initialized
-        // e.g. 45/45/10 after new token becomes initialized and aims for fina target weight of 10%
-        uint256[] memory newEndWeights = _normalizeInterpolated(baseWeights, fixedEndWeights);
+        uint256[] memory finalEndWeights = _normalizeInterpolated(baseWeights, fixedEndWeights);
 
         //setting the initial
-        uint256 currentTime = block.timestamp;
-        _startGradualWeightChange(currentTime, currentTime, newStartWeights, newStartWeights, tokens);
+        _startGradualWeightChange(
+            block.timestamp,
+            // !! here we make a simplifaction by calculating the time based
+            // just looking at the initial startWeights vs finalEndweights
+            block.timestamp + _calcReweighTime(tokens, finalEndWeights),
+            // here I get the starting weights for my new weight change, that should be the weights
+            // as applicable immediately after the first weight change
+            // e.g. 49.5/49.5/1 after a tokens has been added to a 50/50 pool
+            _normalizeInterpolated(baseWeights, fixedStartWeights),
+            // TODO: here we will need the endWeights as long as they apply until the new token becomes initialized
+            // e.g. 45/45/10 after new token becomes initialized and aims for fina target weight of 10%
+            finalEndWeights,
+            tokens
+        );
     }
 
     /// @dev Calculates the time horizon for a rebasing based on max weight change.
     /// @param tokens Array with addresses of tokens.
     /// @param desiredWeights Array with desired weights of tokens. Must be in same order.
     /// @return changeTime Time horizon for the rebalancing period
-    function _calcReweighTime(address[] calldata tokens, uint256[] calldata desiredWeights)
+    function _calcReweighTime(IERC20[] memory tokens, uint256[] memory desiredWeights)
         internal
         returns (uint256 changeTime)
     {
