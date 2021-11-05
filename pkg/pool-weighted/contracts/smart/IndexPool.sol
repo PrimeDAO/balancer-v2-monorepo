@@ -250,38 +250,59 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         uint256[] calldata desiredWeights,
         uint256[] calldata minimumBalances
     ) external {
-        uint256 numTokens = tokens.length;
-        InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length, minimumBalances.length);
+        InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length, minimumBalances.length);
         uint256 normalizedSum = 0;
 
         // assemble params for IndexPoolUtils._normalizeInterpolated
         uint256[] memory baseWeights = new uint256[](tokens.length);
         uint256[] memory fixedWeights = new uint256[](tokens.length);
+        IERC20[] memory newTokensContainer = new IERC20[](tokens.length);
+        uint8 newTokenCounter;
 
-        for (uint8 i = 0; i < numTokens; i++) {
+        for (uint8 i = 0; i < tokens.length; i++) {
             require(minimumBalances[i] != 0, "Invalid zero minimum balance");
             normalizedSum = normalizedSum.add(desiredWeights[i]);
 
             // check if token is new token
             bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
+
             if (currentTokenState.decodeUint32(_START_TIME_OFFSET) == 0) {
                 // currentToken is new token
-                // 1. set it to uninitialized
+                // add to fixedWeights (memory)
+                fixedWeights[i] = desiredWeights[i];
+                // set it to uninitialized (state)
                 currentTokenState = currentTokenState.insertBool(true, _UNINITIALIZED_OFFSET);
                 _tokenState[IERC20(tokens[i])] = currentTokenState;
-                // 2. add to fixedWeights
-                fixedWeights[i] = desiredWeights[i];
-                // TODO: store minimumBalance
+                // store minimumBalance (state)
                 _minimumBalances[tokens[i]] = minimumBalances[i];
+                // add new token to container to be stored further down
+                newTokensContainer[newTokenCounter] = tokens[i];
+                // increment counter for new tokens (memory)
+                newTokenCounter++;
             } else {
                 // currentToken is existing token
                 baseWeights[i] = desiredWeights[i];
             }
         }
 
-        uint256[] memory immediateNewWeights = _normalizeInterpolated(baseWeights, fixedWeights);
+        IERC20[] memory newTokens = _filterNewTokens(newTokensContainer, newTokenCounter);
+        getVault().registerTokens(getPoolId(), newTokens, new address[](newTokens.length));
+
+        // uint256[] memory immediateNewWeights = _normalizeInterpolated(baseWeights, fixedWeights);
 
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
+    }
+
+    function _filterNewTokens(IERC20[] memory newTokensContainer, uint8 amountNewTokens)
+        internal
+        pure
+        returns (IERC20[] memory shortenedAddresses)
+    {
+        shortenedAddresses = new IERC20[](amountNewTokens);
+
+        for (uint8 i = 0; i < amountNewTokens; i++) {
+            shortenedAddresses[i] = newTokensContainer[i];
+        }
     }
 
     function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private pure returns (uint256 finalWeight) {

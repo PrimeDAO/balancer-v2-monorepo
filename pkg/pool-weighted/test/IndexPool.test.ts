@@ -280,7 +280,7 @@ describe('IndexPool', function () {
         const poolId = await pool.getPoolId();
         const { tokens: tokensFromVault, balances, lastChangeBlock } = await vault.getPoolTokens(poolId);
 
-        expect(tokensFromVault).to.equal(reindexTokens);
+        expect(tokensFromVault).to.have.members(reindexTokens);
         // await expect(pool.reindexTokens(addresses, weights, minimumBalances)).to.be.revertedWith(
         //   'Invalid zero minimum balance'
         // );
