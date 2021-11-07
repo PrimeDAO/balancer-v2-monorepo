@@ -190,6 +190,7 @@ export type GradualUpdateParams = {
   startTime: BigNumber;
   endTime: BigNumber;
   endWeights: BigNumber[];
+  startWeights?: BigNumber[];
 };
 
 export type TokenCollectedFees = {

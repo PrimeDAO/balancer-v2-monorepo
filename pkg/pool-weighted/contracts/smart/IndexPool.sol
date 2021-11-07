@@ -97,7 +97,6 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         _setMiscData(_getMiscData().insertUint7(numTokens, _TOTAL_TOKENS_OFFSET));
         // Double check it fits in 7 bits
         _require(_getTotalTokens() == numTokens, Errors.MAX_TOKENS);
-
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(
             currentTime,
@@ -118,7 +117,8 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         returns (
             uint256 startTime,
             uint256 endTime,
-            uint256[] memory endWeights
+            uint256[] memory endWeights,
+            uint256[] memory startWeights
         )
     {
         // Load current pool state from storage
@@ -131,9 +131,12 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         uint256 totalTokens = tokens.length;
 
         endWeights = new uint256[](totalTokens);
+        startWeights = new uint256[](totalTokens);
 
         for (uint256 i = 0; i < totalTokens; i++) {
-            endWeights[i] = _tokenState[tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+            bytes32 tokenState = _tokenState[tokens[i]];
+            endWeights[i] = tokenState.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+            startWeights[i] = tokenState.decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
         }
     }
 
@@ -186,6 +189,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
 
             normalizedSum = normalizedSum.add(endWeight);
         }
+
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
@@ -237,7 +241,6 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         // assemble params for IndexPoolUtils._normalizeInterpolated
         uint256[] memory baseWeights = new uint256[](tokens.length);
         uint256[] memory fixedStartWeights = new uint256[](tokens.length);
-        uint256[] memory fixedEndWeights = new uint256[](tokens.length);
 
         // gather params for pool registry to be used by _registerNewTokensWithVault
         IERC20[] memory newTokensContainer = new IERC20[](tokens.length);
@@ -250,11 +253,10 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
             bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
 
             // check if token is new token by checking if no startTime is set
-            if (currentTokenState.decodeUint32(_START_TIME_OFFSET) == 0) {
+            if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) == 0) {
                 // currentToken is new token
                 // add to fixedStartWeights (memory)
                 fixedStartWeights[i] = _INITIAL_WEIGHT;
-                fixedEndWeights[i] = desiredWeights[i];
                 // set it to uninitialized (state)
                 currentTokenState = currentTokenState.insertBool(true, _UNINITIALIZED_OFFSET);
                 _tokenState[IERC20(tokens[i])] = currentTokenState;
@@ -269,24 +271,21 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
                 baseWeights[i] = _getNormalizedWeight(IERC20(tokens[i]));
             }
         }
-
         _registerNewTokensWithVault(newTokensContainer, newTokenCounter);
-
-        uint256[] memory finalEndWeights = _normalizeInterpolated(baseWeights, fixedEndWeights);
 
         //setting the initial
         _startGradualWeightChange(
             block.timestamp,
             // !! here we make a simplifaction by calculating the time based
             // just looking at the initial startWeights vs finalEndweights
-            block.timestamp + _calcReweighTime(tokens, finalEndWeights),
-            // here I get the starting weights for my new weight change, that should be the weights
+            block.timestamp + _calcReweighTime(tokens, desiredWeights),
+            // here we get the starting weights for the new weight change, that should be the weights
             // as applicable immediately after the first weight change
             // e.g. 49.5/49.5/1 after a tokens has been added to a 50/50 pool
             _normalizeInterpolated(baseWeights, fixedStartWeights),
             // TODO: here we will need the endWeights as long as they apply until the new token becomes initialized
             // e.g. 45/45/10 after new token becomes initialized and aims for fina target weight of 10%
-            finalEndWeights,
+            desiredWeights,
             tokens
         );
     }
@@ -328,7 +327,6 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         for (uint8 i = 0; i < amountNewTokens; i++) {
             newTokens[i] = newTokensContainer[i];
         }
-
         getVault().registerTokens(getPoolId(), newTokens, new address[](newTokens.length));
     }
 

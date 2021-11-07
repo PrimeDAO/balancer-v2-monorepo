@@ -73,9 +73,6 @@ describe.only('IndexPool', function () {
   describe('weights and scaling factors', () => {
     for (const numTokens of range(2, MAX_TOKENS + 1)) {
       context(`with ${numTokens} tokens`, () => {
-        let pool: WeightedPool;
-        let tokens: TokenList;
-
         sharedBeforeEach('deploy pool', async () => {
           tokens = allTokens.subset(numTokens);
 
@@ -201,77 +198,98 @@ describe.only('IndexPool', function () {
   });
 
   describe('#reindexTokens', () => {
-    sharedBeforeEach('deploy pool', async () => {
-      vault = await Vault.create();
-      const params = {
-        tokens,
-        weights,
-        owner,
-        poolType: WeightedPoolType.INDEX_POOL,
-        fromFactory: true,
-        vault,
-      };
-      pool = await WeightedPool.create(params);
+    // TODO: validate that the tokens are actually registered with the pool/vault
+    describe('input validation', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        vault = await Vault.create();
+        const params = {
+          tokens: tokens.subset(3),
+          weights: [fp(0.6), fp(0.2), fp(0.2)],
+          owner,
+          poolType: WeightedPoolType.INDEX_POOL,
+          fromFactory: true,
+          vault,
+        };
+        pool = await WeightedPool.create(params);
+      });
+
+      context('when input array lengths differ', () => {
+        it('reverts "INPUT_LENGTH_MISMATCH" if lengths of tokens and weights differ', async () => {
+          const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
+          const twoWeights = [fp(0.5), fp(0.5)];
+          const threeMinimumBalances = [1000, 2000, 3000];
+
+          await expect(pool.reindexTokens(threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
+            'INPUT_LENGTH_MISMATCH'
+          );
+        });
+
+        it('reverts "INPUT_LENGTH_MISMATCH" if lengths of tokens and minimum balances differ', async () => {
+          const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
+          const threeWeights = [fp(0.4), fp(0.5), fp(0.1)];
+          const twoMinimumBalances = [1000, 2000];
+
+          await expect(pool.reindexTokens(threeAddresses, threeWeights, twoMinimumBalances)).to.be.revertedWith(
+            'INPUT_LENGTH_MISMATCH'
+          );
+        });
+
+        it('reverts "INPUT_LENGTH_MISMATCH" if lengths of weights and minimum balances differ', async () => {
+          const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
+          const twoWeights = [fp(0.5), fp(0.5)];
+          const threeMinimumBalances = [1000, 2000, 3000];
+
+          await expect(pool.reindexTokens(threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
+            'INPUT_LENGTH_MISMATCH'
+          );
+        });
+      });
+
+      context('when a minimum balance is zero', () => {
+        it('reverts: "INVALID_ZERO_MINIMUM_BALANCE"', async () => {
+          const addresses = allTokens.subset(2).tokens.map((token) => token.address);
+          const weights = [fp(0.5), fp(0.5)];
+          const invalidMinimumBalances = [1000, 0];
+
+          await expect(pool.reindexTokens(addresses, weights, invalidMinimumBalances)).to.be.revertedWith(
+            'Invalid zero minimum balance'
+          );
+        });
+      });
     });
 
-    context('when input array lengths differ', () => {
-      it('reverts "INPUT_LENGTH_MISMATCH" if lengths of tokens and weights differ', async () => {
-        const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
-        const twoWeights = [fp(0.5), fp(0.5)];
-        const threeMinimumBalances = [1000, 2000, 3000];
+    context.only('when adding one new token', () => {
+      const numberNewTokens = 1;
+      const numberExistingTokens = 3;
+      const originalWeights = [fp(0.4), fp(0.3), fp(0.3)];
+      const newStartWeights = [fp(0.4), fp(0.3), fp(0.3)];
+      const reindexWeights = [fp(0.5), fp(0.2), fp(0.2), fp(0.1)];
+      const minimumBalances = [1000, 1000, 1000, 1000].map((e) => BigNumber.from(e));
 
-        await expect(pool.reindexTokens(threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
-          'INPUT_LENGTH_MISMATCH'
-        );
+      let reindexTokens: string[], poolId: string, newToken: string;
+
+      sharedBeforeEach('deploy pool', async () => {
+        vault = await Vault.create();
+
+        const params = {
+          tokens: tokens.subset(numberExistingTokens),
+          weights: originalWeights,
+          owner,
+          poolType: WeightedPoolType.INDEX_POOL,
+          fromFactory: true,
+          vault,
+        };
+        pool = await WeightedPool.create(params);
+
+        console.log('schnuu');
       });
-
-      it('reverts "INPUT_LENGTH_MISMATCH" if lengths of tokens and minimum balances differ', async () => {
-        const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
-        const threeWeights = [fp(0.4), fp(0.5), fp(0.1)];
-        const twoMinimumBalances = [1000, 2000];
-
-        await expect(pool.reindexTokens(threeAddresses, threeWeights, twoMinimumBalances)).to.be.revertedWith(
-          'INPUT_LENGTH_MISMATCH'
-        );
-      });
-
-      it('reverts "INPUT_LENGTH_MISMATCH" if lengths of weights and minimum balances differ', async () => {
-        const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
-        const twoWeights = [fp(0.5), fp(0.5)];
-        const threeMinimumBalances = [1000, 2000, 3000];
-
-        await expect(pool.reindexTokens(threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
-          'INPUT_LENGTH_MISMATCH'
-        );
-      });
-    });
-
-    context('when a minimum balance is zero', () => {
-      it('reverts: "INVALID_ZERO_MINIMUM_BALANCE"', async () => {
-        const addresses = allTokens.subset(2).tokens.map((token) => token.address);
-        const weights = [fp(0.5), fp(0.5)];
-        const invalidMinimumBalances = [1000, 0];
-
-        await expect(pool.reindexTokens(addresses, weights, invalidMinimumBalances)).to.be.revertedWith(
-          'Invalid zero minimum balance'
-        );
-      });
-    });
-
-    context('when adding one new token', () => {
-      let reindexTokens: string[],
-        reindexWeights: (number | BigNumber)[],
-        minimumBalances: number[],
-        poolId: string,
-        newToken: string;
 
       sharedBeforeEach('reindexTokens', async () => {
-        reindexTokens = allTokens.subset(5).tokens.map((token) => token.address);
-        reindexWeights = [0, 0, 0, 0, fp(0.1)];
-        minimumBalances = [1000, 1000, 1000, 1000, 1000];
+        reindexTokens = allTokens.subset(numberExistingTokens + numberNewTokens).tokens.map((token) => token.address);
         newToken = reindexTokens[reindexTokens.length - 1];
-        await pool.reindexTokens(reindexTokens, reindexWeights, minimumBalances);
         poolId = await pool.getPoolId();
+        const res = await vault.getPool(poolId);
+        await pool.reindexTokens(reindexTokens, reindexWeights, minimumBalances);
       });
 
       it('registers the additional token in the vault', async () => {
@@ -280,13 +298,18 @@ describe.only('IndexPool', function () {
         expect(tokensFromVault).to.include(newToken);
       });
 
-      // it('maintains the correct token balances in the vault', async () => {
-      //   const { tokens, balances } = await vault.getPoolTokens(poolId);
+      it('adds the new token to the vault registry', async () => {
+        const { tokens: tokensFromVault } = await vault.getPoolTokens(poolId);
 
-      //   expect(tokensFromVault).to.have.members(reindexTokens);
-      // });
+        expect(tokensFromVault).to.have.members(reindexTokens);
+      });
 
-      // it('sets correct ', async () => {});
+      it('sets correct the correct startWeights for all four tokens', async () => {
+        const expectedStartWeights = [fp(0.396), fp(0.297), fp(0.297), fp(0.01)];
+
+        const { startWeights } = await pool.getGradualWeightUpdateParams();
+        expect(startWeights).to.equalWithError(expectedStartWeights, 0.0001);
+      });
 
       // it('sets the correct endWeights', async () => {
       //   const reindexTokens = allTokens.subset(5).tokens.map((token) => token.address);
