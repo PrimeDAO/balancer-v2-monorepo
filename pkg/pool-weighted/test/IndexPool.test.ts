@@ -262,7 +262,6 @@ describe.only('IndexPool', function () {
       const numberNewTokens = 1;
       const numberExistingTokens = 3;
       const originalWeights = [fp(0.4), fp(0.3), fp(0.3)];
-      const newStartWeights = [fp(0.4), fp(0.3), fp(0.3)];
       const reindexWeights = [fp(0.5), fp(0.2), fp(0.2), fp(0.1)];
       const minimumBalances = [1000, 1000, 1000, 1000].map((e) => BigNumber.from(e));
 
@@ -270,7 +269,6 @@ describe.only('IndexPool', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         vault = await Vault.create();
-
         const params = {
           tokens: tokens.subset(numberExistingTokens),
           weights: originalWeights,
@@ -280,15 +278,12 @@ describe.only('IndexPool', function () {
           vault,
         };
         pool = await WeightedPool.create(params);
-
-        console.log('schnuu');
       });
 
       sharedBeforeEach('reindexTokens', async () => {
         reindexTokens = allTokens.subset(numberExistingTokens + numberNewTokens).tokens.map((token) => token.address);
         newToken = reindexTokens[reindexTokens.length - 1];
         poolId = await pool.getPoolId();
-        const res = await vault.getPool(poolId);
         await pool.reindexTokens(reindexTokens, reindexWeights, minimumBalances);
       });
 
@@ -304,11 +299,17 @@ describe.only('IndexPool', function () {
         expect(tokensFromVault).to.have.members(reindexTokens);
       });
 
-      it('sets correct the correct startWeights for all four tokens', async () => {
+      it('sets the correct startWeights for all four tokens', async () => {
         const expectedStartWeights = [fp(0.396), fp(0.297), fp(0.297), fp(0.01)];
-
         const { startWeights } = await pool.getGradualWeightUpdateParams();
+
         expect(startWeights).to.equalWithError(expectedStartWeights, 0.0001);
+      });
+
+      it('sets the correct endWeights for all four tokens', async () => {
+        const { endWeights } = await pool.getGradualWeightUpdateParams();
+
+        expect(endWeights).to.equalWithError(reindexWeights, 0.0001);
       });
 
       // it('sets the correct endWeights', async () => {
