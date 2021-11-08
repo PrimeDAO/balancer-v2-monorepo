@@ -4,6 +4,10 @@ import { expect } from 'chai';
 import { Contract } from '@ethersproject/contracts';
 import { fp } from '../../../pvt/helpers/src/numbers';
 
+const {
+  utils: { parseEther },
+} = ethers;
+
 const HUNDRED_PERCENT = BigNumber.from(10).pow(18);
 
 const getTotalWeight = (weights: BigNumber[]): BigNumber =>
@@ -1000,6 +1004,82 @@ describe('IndexPoolUtils', function () {
           it('returns normalized weights', async () => {
             expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
           });
+        });
+      });
+    });
+  });
+
+  describe('#_getUninitializedTokenWeight', () => {
+    describe('with fixed inputs (minimumBalance = 1,000,000)', () => {
+      const minimumBalance = 1_000_000;
+
+      describe('with amount of new token before swap is 0', () => {
+        const newTokenBalance = 0;
+        const expectedWeight = fp(0.011);
+
+        it('returns the correct weight 1.1% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+            parseEther(newTokenBalance.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
+        });
+      });
+
+      describe('with amount of new token before swap is 100,000', () => {
+        const newTokenBalance = 100_000;
+        const expectedWeight = fp(0.0109);
+
+        it('returns the correct weight 1.09% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+            parseEther(newTokenBalance.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
+        });
+      });
+
+      describe('with amount of new token before swap is 900,000', () => {
+        const newTokenBalance = 900_000;
+        const expectedWeight = fp(0.0101);
+
+        it('returns the correct weight 1.0101% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+            parseEther(newTokenBalance.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
+        });
+      });
+
+      describe('with amount of new token before swap is 1,000,000', () => {
+        const newTokenBalance = 1000_000;
+        const expectedWeight = fp(0.01);
+
+        it('returns the correct weight 1% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+            parseEther(newTokenBalance.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
+        });
+      });
+
+      describe('with amount of new token before swap is 1,200,000', () => {
+        const newTokenBalance = 1_200_000;
+        const expectedWeight = fp(0.012);
+
+        it('returns the correct weight 1.2% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+            parseEther(newTokenBalance.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
         });
       });
     });
