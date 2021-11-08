@@ -289,12 +289,6 @@ describe.only('IndexPool', function () {
         await pool.reindexTokens(reindexTokens, reindexWeights, minimumBalances);
       });
 
-      it('registers the additional token in the vault', async () => {
-        const { tokens: tokensFromVault } = await vault.getPoolTokens(poolId);
-
-        expect(tokensFromVault).to.include(newToken);
-      });
-
       it('adds the new token to the vault registry', async () => {
         const { tokens: tokensFromVault } = await vault.getPoolTokens(poolId);
 
