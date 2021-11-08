@@ -68,7 +68,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         uint256 swapFeePercentage;
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
-        address owner;
+        address controller;
     }
 
     constructor(NewPoolParams memory params)
@@ -81,7 +81,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             params.swapFeePercentage,
             params.pauseWindowDuration,
             params.bufferPeriodDuration,
-            params.owner
+            params.controller
         )
     {
         uint256 numTokens = params.tokens.length;

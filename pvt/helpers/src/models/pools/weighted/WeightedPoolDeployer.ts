@@ -138,7 +138,7 @@ export default {
               assetManagers: assetManagers,
               pauseWindowDuration: pauseWindowDuration,
               bufferPeriodDuration: bufferPeriodDuration,
-              owner: TypesConverter.toAddress(owner),
+              controller: TypesConverter.toAddress(owner),
             },
           ],
           from,
