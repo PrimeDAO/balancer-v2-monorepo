@@ -184,6 +184,7 @@ describe.only('IndexPool', function () {
 
       it('sets the correct endWeights', async () => {
         const { endWeights } = await pool.getGradualWeightUpdateParams();
+
         expect(endWeights).to.equalWithError(desiredWeights, 0.0001);
       });
 
@@ -263,7 +264,9 @@ describe.only('IndexPool', function () {
       const numberExistingTokens = 3;
       const originalWeights = [fp(0.4), fp(0.3), fp(0.3)];
       const reindexWeights = [fp(0.5), fp(0.2), fp(0.2), fp(0.1)];
-      const minimumBalances = [1000, 1000, 1000, 1000].map((e) => BigNumber.from(e));
+      const standardMinimumBalance = 1000;
+
+      const minimumBalances = new Array(numberExistingTokens + numberNewTokens).fill(standardMinimumBalance);
 
       let reindexTokens: string[], poolId: string, newToken: string;
 
@@ -312,17 +315,29 @@ describe.only('IndexPool', function () {
         expect(endWeights).to.equalWithError(reindexWeights, 0.0001);
       });
 
-      // it('sets the correct endWeights', async () => {
-      //   const reindexTokens = allTokens.subset(5).tokens.map((token) => token.address);
-      //   const reindexWeights = [fp(0.2), fp(0.55), fp(0.1), fp(0.05), fp(0.1)];
-      //   const minimumBalances = [1000, 1000, 1000, 1000, 1000];
-      //   await pool.reindexTokens(reindexTokens, reindexWeights, minimumBalances);
+      it('sets the correct rebalancing period', async () => {
+        const maxWeightDifference = calculateMaxWeightDifference(reindexWeights, [...originalWeights, fp(0)]);
+        const time = getTimeForWeightChange(maxWeightDifference);
+        const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
 
-      //   const poolId = await pool.getPoolId();
-      //   const { tokens: tokensFromVault } = await vault.getPoolTokens(poolId);
+        expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
+      });
 
-      //   expect(tokensFromVault).to.have.members(reindexTokens);
-      // });
+      it('sets the correct minimum balance for the new token', async () => {
+        const minimumBalance = await pool.initializationThresholds(reindexTokens[reindexTokens.length - 1]);
+
+        expect(minimumBalance).to.equalWithError(standardMinimumBalance, 0.0001);
+      });
+
+      it('does not set a minimum balance for existing tokens', async () => {
+        const minBalFirstToken = await pool.initializationThresholds(reindexTokens[0]);
+        const minBalSecondToken = await pool.initializationThresholds(reindexTokens[1]);
+        const minBalThirdToken = await pool.initializationThresholds(reindexTokens[2]);
+
+        expect(minBalFirstToken).to.equal(0);
+        expect(minBalSecondToken).to.equal(0);
+        expect(minBalThirdToken).to.equal(0);
+      });
     });
   });
 });

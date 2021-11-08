@@ -56,7 +56,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
     mapping(IERC20 => bytes32) private _tokenState;
 
     // TODO: check if this can be optimized
-    mapping(IERC20 => uint256) private _minimumBalances;
+    mapping(IERC20 => uint256) public initializationThresholds;
 
     // Offsets for data elements in _tokenState
     uint256 private constant _START_WEIGHT_OFFSET = 0;
@@ -261,7 +261,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
                 currentTokenState = currentTokenState.insertBool(true, _UNINITIALIZED_OFFSET);
                 _tokenState[IERC20(tokens[i])] = currentTokenState;
                 // store minimumBalance (state)
-                _minimumBalances[tokens[i]] = minimumBalances[i];
+                initializationThresholds[tokens[i]] = minimumBalances[i];
                 // add new token to container to be stored further down
                 newTokensContainer[newTokenCounter] = tokens[i];
                 // increment counter for new tokens (memory)
