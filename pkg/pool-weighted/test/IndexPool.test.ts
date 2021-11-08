@@ -199,7 +199,6 @@ describe.only('IndexPool', function () {
   });
 
   describe('#reindexTokens', () => {
-    // TODO: validate that the tokens are actually registered with the pool/vault
     describe('input validation', () => {
       sharedBeforeEach('deploy pool', async () => {
         vault = await Vault.create();
