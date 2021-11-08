@@ -258,7 +258,7 @@ describe.only('IndexPool', function () {
       });
     });
 
-    context.only('when adding one new token', () => {
+    context('when adding one new token', () => {
       const numberNewTokens = 1;
       const numberExistingTokens = 3;
       const originalWeights = [fp(0.4), fp(0.3), fp(0.3)];
