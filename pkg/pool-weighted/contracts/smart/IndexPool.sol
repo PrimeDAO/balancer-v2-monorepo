@@ -21,8 +21,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "./WeightCompression.sol";
 import "../utils/IndexPoolUtils.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
@@ -50,13 +48,13 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
-    // [ 155 bits|   8 bits      |   5 bits |  32 bits   |   64 bits    ]
-    // [ unused  | uninitialized | decimals | end weight | start weight ]
+    // [ 155 bits|   5 bits |  32 bits   |   64 bits    ]
+    // [ unused  | decimals | end weight | start weight ]
     // |MSB                                          LSB|
     mapping(IERC20 => bytes32) private _tokenState;
 
     // TODO: check if this can be optimized
-    mapping(IERC20 => uint256) public initializationThresholds;
+    mapping(IERC20 => uint256) public minBalances;
 
     // Offsets for data elements in _tokenState
     uint256 private constant _START_WEIGHT_OFFSET = 0;
@@ -219,7 +217,6 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
     }
 
@@ -244,7 +241,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
 
         // gather params for pool registry to be used by _registerNewTokensWithVault
         IERC20[] memory newTokensContainer = new IERC20[](tokens.length);
-        uint8 newTokenCounter;
+        uint8 newTokenCounter = 0;
 
         for (uint8 i = 0; i < tokens.length; i++) {
             require(minimumBalances[i] != 0, "Invalid zero minimum balance");
@@ -257,11 +254,8 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
                 // currentToken is new token
                 // add to fixedStartWeights (memory)
                 fixedStartWeights[i] = _INITIAL_WEIGHT;
-                // set it to uninitialized (state)
-                currentTokenState = currentTokenState.insertBool(true, _UNINITIALIZED_OFFSET);
-                _tokenState[IERC20(tokens[i])] = currentTokenState;
-                // store minimumBalance (state)
-                initializationThresholds[tokens[i]] = minimumBalances[i];
+                // store minimumBalance (state) also serves as initialization flag
+                minBalances[tokens[i]] = minimumBalances[i];
                 // add new token to container to be stored further down
                 newTokensContainer[newTokenCounter] = tokens[i];
                 // increment counter for new tokens (memory)
@@ -296,6 +290,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
     /// @return changeTime Time horizon for the rebalancing period
     function _calcReweighTime(IERC20[] memory tokens, uint256[] memory desiredWeights)
         internal
+        view
         returns (uint256 changeTime)
     {
         uint256 diff = 0;
@@ -412,9 +407,6 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
 
     function _getTokenData(IERC20 token) private view returns (bytes32 tokenData) {
         tokenData = _tokenState[token];
-
-        // A valid token can't be zero (must have non-zero weights)
-        _require(tokenData != 0, Errors.INVALID_TOKEN);
     }
 
     function _readScalingFactor(bytes32 tokenState) private pure returns (uint256) {

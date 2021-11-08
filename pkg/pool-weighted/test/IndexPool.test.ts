@@ -267,7 +267,7 @@ describe.only('IndexPool', function () {
 
       const minimumBalances = new Array(numberExistingTokens + numberNewTokens).fill(standardMinimumBalance);
 
-      let reindexTokens: string[], poolId: string, newToken: string;
+      let reindexTokens: string[], poolId: string;
 
       sharedBeforeEach('deploy pool', async () => {
         vault = await Vault.create();
@@ -282,9 +282,8 @@ describe.only('IndexPool', function () {
         pool = await WeightedPool.create(params);
       });
 
-      sharedBeforeEach('reindexTokens', async () => {
+      sharedBeforeEach('call reindexTokens function', async () => {
         reindexTokens = allTokens.subset(numberExistingTokens + numberNewTokens).tokens.map((token) => token.address);
-        newToken = reindexTokens[reindexTokens.length - 1];
         poolId = await pool.getPoolId();
         await pool.reindexTokens(reindexTokens, reindexWeights, minimumBalances);
       });
@@ -317,15 +316,15 @@ describe.only('IndexPool', function () {
       });
 
       it('sets the correct minimum balance for the new token', async () => {
-        const minimumBalance = await pool.initializationThresholds(reindexTokens[reindexTokens.length - 1]);
+        const minimumBalance = await pool.minBalances(reindexTokens[reindexTokens.length - 1]);
 
         expect(minimumBalance).to.equalWithError(standardMinimumBalance, 0.0001);
       });
 
       it('does not set a minimum balance for existing tokens', async () => {
-        const minBalFirstToken = await pool.initializationThresholds(reindexTokens[0]);
-        const minBalSecondToken = await pool.initializationThresholds(reindexTokens[1]);
-        const minBalThirdToken = await pool.initializationThresholds(reindexTokens[2]);
+        const minBalFirstToken = await pool.minBalances(reindexTokens[0]);
+        const minBalSecondToken = await pool.minBalances(reindexTokens[1]);
+        const minBalThirdToken = await pool.minBalances(reindexTokens[2]);
 
         expect(minBalFirstToken).to.equal(0);
         expect(minBalSecondToken).to.equal(0);

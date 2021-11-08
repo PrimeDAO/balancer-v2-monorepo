@@ -632,8 +632,8 @@ export default class WeightedPool {
     return await pool.getGradualWeightUpdateParams();
   }
 
-  async initializationThresholds(token: string): Promise<BigNumber> {
-    return await this.instance.initializationThresholds(token);
+  async minBalances(token: string): Promise<BigNumber> {
+    return await this.instance.minBalances(token);
   }
 
   async getCollectedManagementFees(): Promise<TokenCollectedFees> {

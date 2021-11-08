@@ -251,8 +251,7 @@ export default {
           tokens.addresses,
           weights,
           swapFeePercentage,
-          TypesConverter.toAddress(owner),
-          swapEnabledOnStart
+          TypesConverter.toAddress(owner)
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
