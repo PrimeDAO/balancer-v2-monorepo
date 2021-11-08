@@ -26,7 +26,7 @@ const getTimeForWeightChange = (weightDifference: number) => {
   return (weightDifference / 1e18) * 86400 * 100;
 };
 
-describe.only('IndexPool', function () {
+describe('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress;
 
   before('setup signers', async () => {
