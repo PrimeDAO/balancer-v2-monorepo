@@ -26,7 +26,7 @@ const getTimeForWeightChange = (weightDifference: number) => {
   return (weightDifference / 1e18) * 86400 * 100;
 };
 
-describe('IndexPool', function () {
+describe.only('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress, vault: Vault;
 
   before('setup signers', async () => {
@@ -261,8 +261,9 @@ describe('IndexPool', function () {
     context('when adding one new token', () => {
       const numberNewTokens = 1;
       const numberExistingTokens = 3;
+      const newTokenTargetWeight = fp(0.1);
       const originalWeights = [fp(0.4), fp(0.3), fp(0.3)];
-      const reindexWeights = [fp(0.5), fp(0.2), fp(0.2), fp(0.1)];
+      const reindexWeights = [fp(0.5), fp(0.2), fp(0.2), newTokenTargetWeight];
       const standardMinimumBalance = 1000;
 
       const minimumBalances = new Array(numberExistingTokens + numberNewTokens).fill(standardMinimumBalance);
@@ -330,6 +331,13 @@ describe('IndexPool', function () {
         expect(minBalFirstToken).to.equal(0);
         expect(minBalSecondToken).to.equal(0);
         expect(minBalThirdToken).to.equal(0);
+      });
+
+      it('stores the final target weight for the new token', async () => {
+        const expectedNewTokenTargetWeights = [fp(0), fp(0), fp(0), newTokenTargetWeight];
+        const { newTokenTargetWeights } = await pool.getGradualWeightUpdateParams();
+
+        expect(newTokenTargetWeights).to.equalWithError(expectedNewTokenTargetWeights, 0.0001);
       });
     });
   });
