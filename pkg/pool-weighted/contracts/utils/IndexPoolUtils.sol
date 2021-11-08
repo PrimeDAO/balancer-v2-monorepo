@@ -39,10 +39,10 @@ contract IndexPoolUtils {
             }
         }
 
-        /* 
+        /*
             isDownScale is true if the base weights need to be scaled down
             example: pool with 80/20 is transformed to ?/?/1 => totalWeight = 101
-            here the weights of the existing tokens need to be scaled down 
+            here the weights of the existing tokens need to be scaled down
         */
         bool isDownScale = totalWeight > HUNDRED_PERCENT;
         uint256 denormWeightDiff = isDownScale ? totalWeight - HUNDRED_PERCENT : HUNDRED_PERCENT - totalWeight;
@@ -70,11 +70,10 @@ contract IndexPoolUtils {
             checksum = Math.add(checksum, normalizedWeights[i]);
         }
 
-        // there are cases where due to rounding the sum of all normalizedWeights is slightly
-        // less/more than HUNDRED_PERCENT the largest possible deviation I could observe was 19
-        // (e.g. 1000000000000000019) in that case we remove/add the diff from the first weight to
-        // ensure normalized weights since this diff is extremely small (< 0.000000000001 %)
-        // this shouldn't pose a risk
+        // there are cases where due to rounding the sum of all normalizedWeights is slightly less/more
+        // then HUNDRED_PERCENT the largest possible deviation I could observe was 19 (e.g. 1000000000000000019)
+        // in that case we remove/add the diff from the first weight to ensure normalized weights
+        // since this diff is extremely small (< 0.000000000001 %) this shouldn't pose a risk
         if (checksum != HUNDRED_PERCENT) {
             normalizedWeights[0] = checksum > HUNDRED_PERCENT
                 ? Math.sub(normalizedWeights[0], (checksum - HUNDRED_PERCENT))

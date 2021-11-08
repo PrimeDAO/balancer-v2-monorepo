@@ -3,8 +3,6 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
@@ -28,7 +26,7 @@ const getTimeForWeightChange = (weightDifference: number) => {
   return (weightDifference / 1e18) * 86400 * 100;
 };
 
-describe('IndexPool', function () {
+describe.only('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress;
 
   before('setup signers', async () => {
@@ -45,10 +43,8 @@ describe('IndexPool', function () {
     await tokens.mint({ to: [other], amount: fp(200) });
   });
 
-  let sender: SignerWithAddress;
   let pool: WeightedPool;
   const weights = [fp(0.3), fp(0.55), fp(0.1), fp(0.05)];
-  const initialBalances = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
 
   context('with invalid creation parameters', () => {
     const tooManyWeights = [fp(0.3), fp(0.25), fp(0.3), fp(0.1), fp(0.05)];
@@ -186,6 +182,31 @@ describe('IndexPool', function () {
         );
       });
     });
+
+    context('with valid inputs', () => {
+      const desiredWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
+
+      sharedBeforeEach('deploy pool', async () => {
+        await pool.reweighTokens(
+          owner,
+          allTokens.subset(4).tokens.map((token) => token.address),
+          desiredWeights
+        );
+      });
+
+      it('sets the correct endWeights', async () => {
+        const { endWeights } = await pool.getGradualWeightUpdateParams();
+        expect(endWeights).to.equalWithError(desiredWeights, 0.0001);
+      });
+
+      it('sets the correct rebalancing period', async () => {
+        const maxWeightDifference = calculateMaxWeightDifference(desiredWeights, weights);
+        const time = getTimeForWeightChange(maxWeightDifference);
+        const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
+
+        expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
+      });
+    });
   });
 
   describe('#reindexTokens', () => {
@@ -265,35 +286,6 @@ describe('IndexPool', function () {
         await expect(pool.reindexTokens(owner, addresses, weights, invalidMinimumBalances)).to.be.revertedWith(
           'Invalid zero minimum balance'
         );
-      });
-    });
-  });
-
-  describe('#getGradualWeightUpdateParams', () => {
-    sharedBeforeEach('deploy pool', async () => {
-      const params = {
-        tokens,
-        weights,
-        owner,
-        poolType: WeightedPoolType.INDEX_POOL,
-        swapEnabledOnStart: false,
-      };
-      pool = await WeightedPool.create(params);
-    });
-
-    context('when weights are being changed', () => {
-      it('Call of getGradualWeightUpdateParams correctly displays the result', async () => {
-        const fourWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
-        const reweightResult = await pool.reweighTokens(
-          owner,
-          allTokens.subset(4).tokens.map((token) => token.address),
-          fourWeights
-        );
-        const maxWeightDifference = calculateMaxWeightDifference(fourWeights, weights);
-        const time = getTimeForWeightChange(maxWeightDifference);
-        const { startTime, endTime, endWeights } = await pool.getGradualWeightUpdateParams();
-        expect(time).to.equal(Number(endTime) - Number(startTime));
-        expect(fourWeights).to.to.equalWithError(endWeights, 0.0001);
       });
     });
   });
