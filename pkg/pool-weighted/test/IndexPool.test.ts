@@ -302,9 +302,10 @@ describe('IndexPool', function () {
       });
 
       it('sets the correct endWeights for all four tokens', async () => {
+        const expectedEndWeights = [fp(0.55), fp(0.22), fp(0.22), fp(0.01)];
         const { endWeights } = await pool.getGradualWeightUpdateParams();
 
-        expect(endWeights).to.equalWithError(reindexWeights, 0.0001);
+        expect(endWeights).to.equalWithError(expectedEndWeights, 0.0001);
       });
 
       it('sets the correct rebalancing period', async () => {

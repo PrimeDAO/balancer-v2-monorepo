@@ -237,7 +237,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
 
         // assemble params for IndexPoolUtils._normalizeInterpolated
         uint256[] memory baseWeights = new uint256[](tokens.length);
-        uint256[] memory fixedStartWeights = new uint256[](tokens.length);
+        uint256[] memory fixedWeights = new uint256[](tokens.length);
 
         // gather params for pool registry to be used by _registerNewTokensWithVault
         IERC20[] memory newTokensContainer = new IERC20[](tokens.length);
@@ -252,8 +252,8 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
             // check if token is new token by checking if no startTime is set
             if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) == 0) {
                 // currentToken is new token
-                // add to fixedStartWeights (memory)
-                fixedStartWeights[i] = _INITIAL_WEIGHT;
+                // add to fixedWeights (memory)
+                fixedWeights[i] = _INITIAL_WEIGHT;
                 // store minimumBalance (state) also serves as initialization flag
                 minBalances[tokens[i]] = minimumBalances[i];
                 // add new token to container to be stored further down
@@ -276,10 +276,10 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
             // here we get the starting weights for the new weight change, that should be the weights
             // as applicable immediately after the first weight change
             // e.g. 49.5/49.5/1 after a tokens has been added to a 50/50 pool
-            _normalizeInterpolated(baseWeights, fixedStartWeights),
+            _normalizeInterpolated(baseWeights, fixedWeights),
             // TODO: here we will need the endWeights as long as they apply until the new token becomes initialized
             // e.g. 45/45/10 after new token becomes initialized and aims for fina target weight of 10%
-            desiredWeights,
+            _normalizeInterpolated(desiredWeights, fixedWeights),
             tokens
         );
     }
