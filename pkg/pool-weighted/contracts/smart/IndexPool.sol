@@ -316,6 +316,16 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         );
     }
 
+    function onSwap(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) public override returns (uint256) {
+        require(minBalances[swapRequest.tokenOut] == 0, "UNINITIALIZED_TOKEN");
+
+        return super.onSwap(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+    }
+
     /// @dev Calculates the time horizon for a rebasing based on max weight change.
     /// @param tokens Array with addresses of tokens.
     /// @param desiredWeights Array with desired weights of tokens. Must be in same order.

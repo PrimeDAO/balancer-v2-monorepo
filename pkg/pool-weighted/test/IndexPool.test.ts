@@ -8,6 +8,8 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { range } from 'lodash';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
+import { SwapKind } from '@balancer-labs/balancer-js';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 const calculateMaxWeightDifference = (oldWeights: BigNumber[], newWeights: BigNumber[]) => {
   let maxWeightDifference = 0;
@@ -26,7 +28,7 @@ const getTimeForWeightChange = (weightDifference: number) => {
   return (weightDifference / 1e18) * 86400 * 100;
 };
 
-describe('IndexPool', function () {
+describe.only('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress, vault: Vault;
 
   before('setup signers', async () => {
@@ -339,6 +341,44 @@ describe('IndexPool', function () {
 
         expect(newTokenTargetWeights).to.equalWithError(expectedNewTokenTargetWeights, 0.0001);
       });
+
+      it('reverts if attempting to swap it out of pool', async () => {
+        const singleSwap = {
+          poolId: await pool.getPoolId(),
+          kind: SwapKind.GivenIn,
+          assetIn: reindexTokens[0],
+          assetOut: reindexTokens[3],
+          amount: fp(0.001),
+          userData: '0x',
+        };
+        const funds = {
+          sender: owner.address,
+          fromInternalBalance: false,
+          recipient: other.address,
+          toInternalBalance: false,
+        };
+        const limit = 0; // Minimum amount out
+        const deadline = MAX_UINT256;
+
+        await expect(vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline)).to.be.revertedWith(
+          'UNINITIALIZED_TOKEN'
+        );
+      });
+
+      // it('collects management fees on swaps given in', async () => {
+      //   const limit = 0; // Minimum amount out
+      //   const deadline = MAX_UINT256;
+
+      //   const expectedSwapFee = singleSwap.amount.mul(swapFeePercentage).div(fp(1));
+      //   const expectedManagementFee = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
+
+      //   await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+
+      //   const { amounts: actualFees } = await pool.getCollectedManagementFees();
+      //   // The fee was charged in the first token (in)
+      //   expect(actualFees[0]).to.be.equalWithError(expectedManagementFee, 0.001);
+      //   expect(actualFees.filter((_, i) => i != 0)).to.be.zeros;
+      // });
     });
   });
 });
