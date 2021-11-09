@@ -12,7 +12,7 @@ contract IndexPoolUtils {
     uint256 internal constant _HUNDRED_PERCENT = 10**_PRECISION;
     uint256 internal constant _UNINITIALIZED_WEIGHT = _HUNDRED_PERCENT / 100;
 
-    /// @dev Can be used to scale the weights for tokens up or down so that the total weight is normalized.
+    /// @dev Scales baseWeights up/down so that resulting weights array is normalized.
     /// @param _baseWeights Array with weights of tokens. Those that are non-zero need to be scaled.
     /// @param _fixedWeights Array with weights of tokens. Those that are non-zero are fixed.
     /// @return Array with scaled and fixed weights of tokens. Should add up to one.
