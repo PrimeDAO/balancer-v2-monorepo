@@ -36,24 +36,23 @@ contract IndexPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
         IERC20[] memory tokens,
         uint256[] memory weights,
         uint256 swapFeePercentage,
-        address controller,
-        bool swapEnabledOnStart
+        address controller
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
-
         return
             _create(
                 abi.encode(
-                    getVault(),
-                    name,
-                    symbol,
-                    tokens,
-                    weights,
-                    swapFeePercentage,
-                    pauseWindowDuration,
-                    bufferPeriodDuration,
-                    controller,
-                    swapEnabledOnStart
+                    IndexPool.NewPoolParams({
+                        vault: getVault(),
+                        name: name,
+                        symbol: symbol,
+                        tokens: tokens,
+                        normalizedWeights: weights,
+                        swapFeePercentage: swapFeePercentage,
+                        pauseWindowDuration: pauseWindowDuration,
+                        bufferPeriodDuration: bufferPeriodDuration,
+                        controller: controller
+                    })
                 )
             );
     }

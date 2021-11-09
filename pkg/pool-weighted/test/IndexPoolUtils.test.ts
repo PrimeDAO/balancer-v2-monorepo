@@ -4,6 +4,10 @@ import { expect } from 'chai';
 import { Contract } from '@ethersproject/contracts';
 import { fp } from '../../../pvt/helpers/src/numbers';
 
+const {
+  utils: { parseEther },
+} = ethers;
+
 const HUNDRED_PERCENT = BigNumber.from(10).pow(18);
 
 const getTotalWeight = (weights: BigNumber[]): BigNumber =>
@@ -111,7 +115,7 @@ describe('IndexPoolUtils', function () {
     await indexPoolUtilsInstance.deployed();
   });
 
-  describe('#normalizeInterpolated', () => {
+  describe('#normalizeInterpolatedMock', () => {
     let receivedWeights: BigNumber[];
 
     describe('with denormalized weights greater than one', () => {
@@ -120,7 +124,7 @@ describe('IndexPoolUtils', function () {
         const fixedWeights = [0, 0, 0.01];
 
         beforeEach(async () => {
-          receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+          receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
             baseWeights.map((w) => fp(w)),
             fixedWeights.map((w) => fp(w))
           );
@@ -141,7 +145,7 @@ describe('IndexPoolUtils', function () {
         const fixedWeights = [0, 0, 0.01, 0.01];
 
         beforeEach(async () => {
-          receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+          receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
             baseWeights.map((w) => fp(w)),
             fixedWeights.map((w) => fp(w))
           );
@@ -162,13 +166,34 @@ describe('IndexPoolUtils', function () {
         const fixedWeights = [0, 0, 0.2];
 
         beforeEach(async () => {
-          receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+          receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
             baseWeights.map((w) => fp(w)),
             fixedWeights.map((w) => fp(w))
           );
         });
 
-        it('returns the correct weights 78.4/19.6/2', async () => {
+        it('returns the correct weights 40/40/20', async () => {
+          const expectedWeights = [0.4, 0.4, 0.2].map((pct) => fp(pct));
+          expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+        });
+
+        it('returns normalized weights', async () => {
+          expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+        });
+      });
+
+      describe('with 60/60/30 pool to change to ?/?/20', () => {
+        const baseWeights = [0.6, 0.6, 0.3];
+        const fixedWeights = [0, 0, 0.2];
+
+        beforeEach(async () => {
+          receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
+            baseWeights.map((w) => fp(w)),
+            fixedWeights.map((w) => fp(w))
+          );
+        });
+
+        it('returns the correct weights 40/40/20', async () => {
           const expectedWeights = [0.4, 0.4, 0.2].map((pct) => fp(pct));
           expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
         });
@@ -185,7 +210,7 @@ describe('IndexPoolUtils', function () {
         const fixedWeights = [0, 0, 0.01];
 
         beforeEach(async () => {
-          receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+          receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
             baseWeights.map((w) => fp(w)),
             fixedWeights.map((w) => fp(w))
           );
@@ -211,7 +236,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -230,7 +255,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -253,7 +278,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -272,7 +297,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -295,7 +320,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -314,7 +339,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -337,7 +362,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -356,7 +381,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -379,7 +404,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -398,7 +423,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -421,7 +446,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -440,7 +465,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -463,7 +488,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -482,7 +507,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -505,7 +530,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -524,7 +549,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -547,7 +572,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -566,7 +591,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -589,7 +614,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -608,7 +633,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -631,7 +656,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -650,7 +675,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -673,7 +698,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -692,7 +717,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -715,7 +740,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -734,7 +759,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -757,7 +782,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -776,7 +801,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -799,7 +824,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -818,7 +843,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -841,7 +866,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -860,7 +885,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -883,7 +908,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -902,7 +927,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -925,7 +950,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -944,7 +969,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -967,7 +992,7 @@ describe('IndexPoolUtils', function () {
         describe('when adding tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupNewTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -986,7 +1011,7 @@ describe('IndexPoolUtils', function () {
         describe('when adjusting existing tokens', () => {
           beforeEach(async () => {
             ({ baseWeights, fixedWeights } = setupAdjustTokens(numberWeights));
-            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+            receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
               baseWeights.map((w) => fp(w)),
               fixedWeights.map((w) => fp(w))
             );
@@ -1000,6 +1025,82 @@ describe('IndexPoolUtils', function () {
           it('returns normalized weights', async () => {
             expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
           });
+        });
+      });
+    });
+  });
+
+  describe('#getUninitializedTokenWeight', () => {
+    describe('with fixed inputs (minimumBalance = 1,000,000)', () => {
+      const minimumBalance = 1_000_000;
+
+      describe('with amount of new token before swap is 0', () => {
+        const newTokenBalance = 0;
+        const expectedWeight = fp(0.011);
+
+        it('returns the correct weight 1.1% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeightMock(
+            parseEther(newTokenBalance.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
+        });
+      });
+
+      describe('with amount of new token before swap is 100,000', () => {
+        const newTokenBalance = 100_000;
+        const expectedWeight = fp(0.0109);
+
+        it('returns the correct weight 1.09% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeightMock(
+            parseEther(newTokenBalance.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
+        });
+      });
+
+      describe('with amount of new token before swap is 900,000', () => {
+        const newTokenBalance = 900_000;
+        const expectedWeight = fp(0.0101);
+
+        it('returns the correct weight 1.0101% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeightMock(
+            parseEther(newTokenBalance.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
+        });
+      });
+
+      describe('with amount of new token before swap is 1,000,000', () => {
+        const newTokenBalance = 1000_000;
+        const expectedWeight = fp(0.01);
+
+        it('returns the correct weight 1% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeightMock(
+            parseEther(newTokenBalance.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
+        });
+      });
+
+      describe('with amount of new token before swap is 1,200,000', () => {
+        const newTokenBalance = 1_200_000;
+        const expectedWeight = fp(0.012);
+
+        it('returns the correct weight 1.2% ', async () => {
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeightMock(
+            parseEther(newTokenBalance.toString()),
+            parseEther(minimumBalance.toString())
+          );
+
+          expect(receivedWeight).to.equal(expectedWeight);
         });
       });
     });
