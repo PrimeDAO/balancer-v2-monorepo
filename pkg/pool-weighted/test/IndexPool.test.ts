@@ -344,7 +344,7 @@ describe('IndexPool', function () {
     });
   });
 
-  describe.only('basic vault interactions', () => {
+  describe('basic vault interactions', () => {
     const numberExistingTokens = 3;
     const originalWeights = [fp(0.4), fp(0.3), fp(0.3)];
     const initialPoolAmounts = fp(1);
