@@ -53,7 +53,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
     // |MSB                                          LSB|
     mapping(IERC20 => bytes32) private _tokenState;
 
-    // TODO: check if this can be optimized
+    // minimum balances that represent initialization threshold for new tokens
     mapping(IERC20 => uint256) public minBalances;
 
     // Offsets for data elements in _tokenState
