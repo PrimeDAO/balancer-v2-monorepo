@@ -8,6 +8,16 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { range } from 'lodash';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+
+import {
+  BatchSwapStep,
+  FundManagement,
+  SingleSwap,
+  SwapKind,
+  PoolSpecialization,
+  RelayerAuthorization,
+} from '@balancer-labs/balancer-js';
 
 const calculateMaxWeightDifference = (oldWeights: BigNumber[], newWeights: BigNumber[]) => {
   let maxWeightDifference = 0;
@@ -338,6 +348,50 @@ describe('IndexPool', function () {
         const { newTokenTargetWeights } = await pool.getGradualWeightUpdateParams();
 
         expect(newTokenTargetWeights).to.equalWithError(expectedNewTokenTargetWeights, 0.0001);
+      });
+    });
+  });
+
+  describe('basic vault interactions', () => {
+    const numberNewTokens = 1;
+    const numberExistingTokens = 3;
+    const newTokenTargetWeight = fp(0.1);
+    const originalWeights = [fp(0.4), fp(0.3), fp(0.3)];
+    const reindexWeights = [fp(0.5), fp(0.2), fp(0.2), newTokenTargetWeight];
+    const standardMinimumBalance = fp(0.01);
+    const initialBalances = Array(numberExistingTokens).fill(fp(1));
+    const minimumBalances = new Array(numberExistingTokens + numberNewTokens).fill(standardMinimumBalance);
+
+    let reindexTokens: string[],
+      poolId: string,
+      singleSwap: SingleSwap,
+      funds: FundManagement,
+      limit: number,
+      deadline: BigNumber,
+      vault: Vault;
+
+    describe('joining', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        vault = await Vault.create();
+        const params = {
+          tokens: tokens.subset(numberExistingTokens),
+          weights: originalWeights,
+          owner,
+          poolType: WeightedPoolType.INDEX_POOL,
+          fromFactory: true,
+          vault,
+        };
+        pool = await WeightedPool.create(params);
+      });
+
+      sharedBeforeEach('initialize pool', async () => {
+        await tokens.mint({ to: owner, amount: fp(100) });
+        await tokens.approve({ from: owner, to: await pool.getVault() });
+        await pool.init({ from: owner, initialBalances });
+      });
+
+      it.only('lol', () => {
+        console.log('kek');
       });
     });
   });
