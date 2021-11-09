@@ -353,17 +353,14 @@ describe('IndexPool', function () {
   });
 
   describe('basic vault interactions', () => {
-    const numberNewTokens = 1;
     const numberExistingTokens = 3;
-    const newTokenTargetWeight = fp(0.1);
     const originalWeights = [fp(0.4), fp(0.3), fp(0.3)];
-    const reindexWeights = [fp(0.5), fp(0.2), fp(0.2), newTokenTargetWeight];
-    const standardMinimumBalance = fp(0.01);
-    const initialBalances = Array(numberExistingTokens).fill(fp(1));
-    const minimumBalances = new Array(numberExistingTokens + numberNewTokens).fill(standardMinimumBalance);
-
+    const initialPoolAmounts = fp(1);
+    const initialBalances = Array(numberExistingTokens).fill(initialPoolAmounts);
     const limit = 0; // Minimum amount out
     const deadline = MAX_UINT256;
+    const swapAmount = fp(0.0001);
+
     let poolId: string, singleSwap: SingleSwap, funds: FundManagement, vault: Vault;
 
     describe('swapping', () => {
@@ -393,7 +390,7 @@ describe('IndexPool', function () {
           kind: SwapKind.GivenIn,
           assetIn: allTokens.first.address,
           assetOut: allTokens.second.address,
-          amount: fp(0.0001),
+          amount: swapAmount,
           userData: '0x',
         };
         funds = {
@@ -402,10 +399,12 @@ describe('IndexPool', function () {
           recipient: other.address,
           toInternalBalance: false,
         };
+        await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
       });
 
-      it.only('lol', async () => {
-        await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+      it('adds tokens of type assetIn to the vault', async () => {
+        const difference = (await tokens.first.balanceOf(vault.address)).sub(initialPoolAmounts);
+        expect(difference).to.equal(swapAmount);
       });
     });
   });
