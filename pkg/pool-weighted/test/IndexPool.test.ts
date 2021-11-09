@@ -8,6 +8,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { range } from 'lodash';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import {
   BatchSwapStep,
@@ -361,15 +362,11 @@ describe('IndexPool', function () {
     const initialBalances = Array(numberExistingTokens).fill(fp(1));
     const minimumBalances = new Array(numberExistingTokens + numberNewTokens).fill(standardMinimumBalance);
 
-    let reindexTokens: string[],
-      poolId: string,
-      singleSwap: SingleSwap,
-      funds: FundManagement,
-      limit: number,
-      deadline: BigNumber,
-      vault: Vault;
+    const limit = 0; // Minimum amount out
+    const deadline = MAX_UINT256;
+    let poolId: string, singleSwap: SingleSwap, funds: FundManagement, limit: number, deadline: BigNumber, vault: Vault;
 
-    describe('joining', () => {
+    describe('swapping', () => {
       sharedBeforeEach('deploy pool', async () => {
         vault = await Vault.create();
         const params = {
@@ -389,8 +386,26 @@ describe('IndexPool', function () {
         await pool.init({ from: owner, initialBalances });
       });
 
-      it.only('lol', () => {
-        console.log('kek');
+      sharedBeforeEach('swap', async () => {
+        poolId = await pool.getPoolId();
+        singleSwap = {
+          poolId,
+          kind: SwapKind.GivenIn,
+          assetIn: allTokens.first.address,
+          assetOut: allTokens.second.address,
+          amount: fp(0.0001),
+          userData: '0x',
+        };
+        funds = {
+          sender: owner.address,
+          fromInternalBalance: false,
+          recipient: other.address,
+          toInternalBalance: false,
+        };
+      });
+
+      it.only('lol', async () => {
+        await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
       });
     });
   });
