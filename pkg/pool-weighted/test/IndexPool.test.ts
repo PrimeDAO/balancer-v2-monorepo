@@ -8,7 +8,6 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { range } from 'lodash';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 import {
   BatchSwapStep,
