@@ -12,5 +12,4 @@ contract MockIndexPoolUtils {
         return IndexPoolUtils.normalizeInterpolated(_baseWeights, _fixedWeights);
     }
 
-
 }
