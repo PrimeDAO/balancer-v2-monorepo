@@ -88,7 +88,7 @@ library IndexPoolUtils {
     /// @param _tokenBalanceBeforeSwap Amount of uninitialized token in pool (before the swap)
     /// @param _minimumBalance Minimum balance set for the uninitialized token (= initialization threshold)
     /// @return Weight to be used to calculate the price of an uninitalized token.
-    function _getUninitializedTokenWeight(uint256 _tokenBalanceBeforeSwap, uint256 _minimumBalance)
+    function getUninitializedTokenWeight(uint256 _tokenBalanceBeforeSwap, uint256 _minimumBalance)
         internal
         pure
         returns (uint256)
