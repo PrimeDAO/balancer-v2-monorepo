@@ -316,6 +316,22 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         );
     }
 
+    /// @dev Hook is called when someone swaps through vault.
+    /// @param swapRequest Swap params.
+    /// @param currentBalanceTokenIn Vault balance of token that is swapped into the pool.
+    /// @param currentBalanceTokenOut Vault balance of token that is swapped out of the pool.
+    /// @return Amount of tokens that the user will receive in return for their token.
+    function onSwap(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) public override returns (uint256) {
+        //cannot swap out uninitialized token
+        require(minBalances[swapRequest.tokenOut] == 0, "Uninitialized token");
+
+        return super.onSwap(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+    }
+
     /// @dev Calculates the time horizon for a rebasing based on max weight change.
     /// @param tokens Array with addresses of tokens.
     /// @param desiredWeights Array with desired weights of tokens. Must be in same order.

@@ -432,7 +432,7 @@ describe('IndexPool', function () {
       });
 
       context('when attempting to swap new token out of pool', () => {
-        it.only('reverts "Uninitialized token"', async () => {
+        it('reverts "Uninitialized token"', async () => {
           const singleSwap = {
             poolId,
             kind: SwapKind.GivenIn,
