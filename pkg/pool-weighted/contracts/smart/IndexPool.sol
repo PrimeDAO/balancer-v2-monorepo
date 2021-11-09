@@ -108,7 +108,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
     }
 
     /**
-     * @dev Return start time, end time, and endWeights as an array.
+     * @dev Return start time, end time, startWeights, endWeights and the final target wights of new tokens as an array.
      * Current weights should be retrieved via `getNormalizedWeights()`.
      */
     function getGradualWeightUpdateParams()
