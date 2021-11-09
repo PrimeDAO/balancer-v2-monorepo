@@ -142,6 +142,95 @@ describe('IndexPool', function () {
     });
   });
 
+  describe('basic vault interactions', () => {
+    const numberExistingTokens = 3;
+    const originalWeights = [fp(0.4), fp(0.3), fp(0.3)];
+    const initialPoolAmounts = fp(1);
+    const initialBalances = Array(numberExistingTokens).fill(initialPoolAmounts);
+    const limit = 0; // Minimum amount out
+    const deadline = MAX_UINT256;
+    const swapAmount = fp(0.0001);
+
+    let poolId: string, singleSwap: SingleSwap, funds: FundManagement, vault: Vault;
+
+    sharedBeforeEach('deploy pool', async () => {
+      vault = await Vault.create();
+      const params = {
+        tokens: tokens.subset(numberExistingTokens),
+        weights: originalWeights,
+        owner,
+        poolType: WeightedPoolType.INDEX_POOL,
+        fromFactory: true,
+        vault,
+      };
+      pool = await WeightedPool.create(params);
+      poolId = await pool.getPoolId();
+    });
+
+    sharedBeforeEach('join pool (aka fund liquidity)', async () => {
+      await tokens.mint({ to: owner, amount: fp(100) });
+      await tokens.approve({ from: owner, to: await pool.getVault() });
+      await pool.init({ from: owner, initialBalances });
+    });
+
+    describe('swapping', () => {
+      sharedBeforeEach('assemble swap params', async () => {
+        singleSwap = {
+          poolId,
+          kind: SwapKind.GivenIn,
+          assetIn: allTokens.third.address,
+          assetOut: allTokens.second.address,
+          amount: swapAmount,
+          userData: '0x',
+        };
+        funds = {
+          sender: owner.address,
+          fromInternalBalance: false,
+          recipient: owner.address,
+          toInternalBalance: false,
+        };
+      });
+
+      it('adds correct amount tokens of type assetIn to the vault', async () => {
+        await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+
+        const difference = (await tokens.third.balanceOf(vault.address)).sub(initialPoolAmounts);
+        expect(difference).to.equal(swapAmount);
+      });
+
+      it('removes correct amount tokens of type assetOut from the vault', async () => {
+        const defaultFeePercentage = 0.01;
+        const defaultFeeAmount = pct(swapAmount, defaultFeePercentage);
+        const expectedAmountOut = await pool.estimateGivenIn({
+          in: tokens.third,
+          out: tokens.second,
+          amount: swapAmount.sub(defaultFeeAmount),
+        });
+
+        await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+
+        const vaultDifference = initialPoolAmounts.sub(await tokens.second.balanceOf(vault.address));
+        expect(vaultDifference).to.equalWithError(expectedAmountOut, 0.0001);
+      });
+    });
+
+    describe('exit the pool (aka removing liquidity)', () => {
+      const removeAmount = fp(0.6);
+      const residualAmount = initialPoolAmounts.sub(removeAmount);
+
+      sharedBeforeEach('remove liquidity', async () => {
+        await pool.exitGivenOut({ from: owner, amountsOut: initialBalances.map(() => removeAmount) });
+      });
+
+      it('removes the tokens from the vaults balance', async () => {
+        const expectedPoolAmounts = initialBalances.map(() => residualAmount);
+        const { balances: actualPoolAmounts } = await vault.getPoolTokens(poolId);
+
+        expect(actualPoolAmounts).to.eql(expectedPoolAmounts);
+      });
+    });
+  });
+
   describe('#reweighTokens', () => {
     sharedBeforeEach('deploy pool', async () => {
       const params = {
@@ -340,95 +429,6 @@ describe('IndexPool', function () {
         const { newTokenTargetWeights } = await pool.getGradualWeightUpdateParams();
 
         expect(newTokenTargetWeights).to.equalWithError(expectedNewTokenTargetWeights, 0.0001);
-      });
-    });
-  });
-
-  describe('basic vault interactions', () => {
-    const numberExistingTokens = 3;
-    const originalWeights = [fp(0.4), fp(0.3), fp(0.3)];
-    const initialPoolAmounts = fp(1);
-    const initialBalances = Array(numberExistingTokens).fill(initialPoolAmounts);
-    const limit = 0; // Minimum amount out
-    const deadline = MAX_UINT256;
-    const swapAmount = fp(0.0001);
-
-    let poolId: string, singleSwap: SingleSwap, funds: FundManagement, vault: Vault;
-
-    sharedBeforeEach('deploy pool', async () => {
-      vault = await Vault.create();
-      const params = {
-        tokens: tokens.subset(numberExistingTokens),
-        weights: originalWeights,
-        owner,
-        poolType: WeightedPoolType.INDEX_POOL,
-        fromFactory: true,
-        vault,
-      };
-      pool = await WeightedPool.create(params);
-      poolId = await pool.getPoolId();
-    });
-
-    sharedBeforeEach('join pool (aka fund liquidity)', async () => {
-      await tokens.mint({ to: owner, amount: fp(100) });
-      await tokens.approve({ from: owner, to: await pool.getVault() });
-      await pool.init({ from: owner, initialBalances });
-    });
-
-    describe('swapping', () => {
-      sharedBeforeEach('assemble swap params', async () => {
-        singleSwap = {
-          poolId,
-          kind: SwapKind.GivenIn,
-          assetIn: allTokens.third.address,
-          assetOut: allTokens.second.address,
-          amount: swapAmount,
-          userData: '0x',
-        };
-        funds = {
-          sender: owner.address,
-          fromInternalBalance: false,
-          recipient: owner.address,
-          toInternalBalance: false,
-        };
-      });
-
-      it('adds correct amount tokens of type assetIn to the vault', async () => {
-        await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
-
-        const difference = (await tokens.third.balanceOf(vault.address)).sub(initialPoolAmounts);
-        expect(difference).to.equal(swapAmount);
-      });
-
-      it('removes correct amount tokens of type assetOut from the vault', async () => {
-        const defaultFeePercentage = 0.01;
-        const defaultFeeAmount = pct(swapAmount, defaultFeePercentage);
-        const expectedAmountOut = await pool.estimateGivenIn({
-          in: tokens.third,
-          out: tokens.second,
-          amount: swapAmount.sub(defaultFeeAmount),
-        });
-
-        await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
-
-        const vaultDifference = initialPoolAmounts.sub(await tokens.second.balanceOf(vault.address));
-        expect(vaultDifference).to.equalWithError(expectedAmountOut, 0.0001);
-      });
-    });
-
-    describe('exit pool (aka remove liquidity)', () => {
-      const removeAmount = fp(0.6);
-      const residualAmount = initialPoolAmounts.sub(removeAmount);
-
-      sharedBeforeEach('remove liquidity', async () => {
-        await pool.exitGivenOut({ from: owner, amountsOut: initialBalances.map(() => removeAmount) });
-      });
-
-      it('removes the tokens from the vaults balance', async () => {
-        const expectedPoolAmounts = initialBalances.map(() => residualAmount);
-        const { balances: actualPoolAmounts } = await vault.getPoolTokens(poolId);
-
-        expect(actualPoolAmounts).to.eql(expectedPoolAmounts);
       });
     });
   });
