@@ -364,7 +364,7 @@ describe('IndexPool', function () {
 
     const limit = 0; // Minimum amount out
     const deadline = MAX_UINT256;
-    let poolId: string, singleSwap: SingleSwap, funds: FundManagement, limit: number, deadline: BigNumber, vault: Vault;
+    let poolId: string, singleSwap: SingleSwap, funds: FundManagement, vault: Vault;
 
     describe('swapping', () => {
       sharedBeforeEach('deploy pool', async () => {
