@@ -246,6 +246,25 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     ) external pure {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, desiredWeights.length, minimumBalances.length);
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        uint256 totalTokens = tokens.length;
+
+
+        bool present = false;
+        for(uint8 i = 0; i < _tokens.length; i++){
+            for(uint8 j = 0; j < tokens.length; j++){
+                if(tokens[j] == _tokens[i]){
+                    present = true;
+                }
+            }
+            if(present){
+                present = false;
+            } else {
+                tokens.push(tokens[i]);
+                desiredWeights.push();
+                
+            }
+        }
 
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; i++) {
