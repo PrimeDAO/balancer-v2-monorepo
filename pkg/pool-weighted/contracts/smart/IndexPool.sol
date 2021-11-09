@@ -24,7 +24,7 @@ import "../utils/IndexPoolUtils.sol";
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
-contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
+contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
     using WeightCompression for uint256;
@@ -307,10 +307,10 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
             // here we get the starting weights for the new weight change, that should be the weights
             // as applicable immediately after the first weight change
             // e.g. 49.5/49.5/1 after a tokens has been added to a 50/50 pool
-            _normalizeInterpolated(baseWeights, fixedWeights),
+            IndexPoolUtils.normalizeInterpolated(baseWeights, fixedWeights),
             // TODO: here we will need the endWeights as long as they apply until the new token becomes initialized
             // e.g. 45/45/10 after new token becomes initialized and aims for fina target weight of 10%
-            _normalizeInterpolated(desiredWeights, fixedWeights),
+            IndexPoolUtils.normalizeInterpolated(desiredWeights, fixedWeights),
             tokens,
             newTokenTargetWeights
         );

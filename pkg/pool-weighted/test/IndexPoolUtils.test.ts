@@ -187,7 +187,7 @@ describe('IndexPoolUtils', function () {
         const fixedWeights = [0, 0, 0.2];
 
         beforeEach(async () => {
-          receivedWeights = await indexPoolUtilsInstance.normalizeInterpolated(
+          receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
             baseWeights.map((w) => fp(w)),
             fixedWeights.map((w) => fp(w))
           );
@@ -1030,7 +1030,7 @@ describe('IndexPoolUtils', function () {
     });
   });
 
-  describe('#_getUninitializedTokenWeight', () => {
+  describe('#getUninitializedTokenWeight', () => {
     describe('with fixed inputs (minimumBalance = 1,000,000)', () => {
       const minimumBalance = 1_000_000;
 
@@ -1039,7 +1039,7 @@ describe('IndexPoolUtils', function () {
         const expectedWeight = fp(0.011);
 
         it('returns the correct weight 1.1% ', async () => {
-          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeightMock(
             parseEther(newTokenBalance.toString()),
             parseEther(minimumBalance.toString())
           );
@@ -1053,7 +1053,7 @@ describe('IndexPoolUtils', function () {
         const expectedWeight = fp(0.0109);
 
         it('returns the correct weight 1.09% ', async () => {
-          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeightMock(
             parseEther(newTokenBalance.toString()),
             parseEther(minimumBalance.toString())
           );
@@ -1067,7 +1067,7 @@ describe('IndexPoolUtils', function () {
         const expectedWeight = fp(0.0101);
 
         it('returns the correct weight 1.0101% ', async () => {
-          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeightMock(
             parseEther(newTokenBalance.toString()),
             parseEther(minimumBalance.toString())
           );
@@ -1081,7 +1081,7 @@ describe('IndexPoolUtils', function () {
         const expectedWeight = fp(0.01);
 
         it('returns the correct weight 1% ', async () => {
-          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeightMock(
             parseEther(newTokenBalance.toString()),
             parseEther(minimumBalance.toString())
           );
@@ -1095,7 +1095,7 @@ describe('IndexPoolUtils', function () {
         const expectedWeight = fp(0.012);
 
         it('returns the correct weight 1.2% ', async () => {
-          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeight(
+          const receivedWeight = await indexPoolUtilsInstance.getUninitializedTokenWeightMock(
             parseEther(newTokenBalance.toString()),
             parseEther(minimumBalance.toString())
           );

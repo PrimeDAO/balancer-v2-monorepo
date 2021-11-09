@@ -12,4 +12,11 @@ contract MockIndexPoolUtils {
         return IndexPoolUtils.normalizeInterpolated(_baseWeights, _fixedWeights);
     }
 
+    function getUninitializedTokenWeightMock(uint256 _newTokenBalanceIn, uint256 _minimumBalance)
+        public
+        pure
+        returns (uint256)
+    {
+        return IndexPoolUtils.getUninitializedTokenWeight(_newTokenBalanceIn, _minimumBalance);
+    }
 }
