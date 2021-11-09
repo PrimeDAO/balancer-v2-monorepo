@@ -259,7 +259,7 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
         InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length, minimumBalances.length);
 
         /*
-            assemble params for IndexPoolUtils._normalizeInterpolated:
+            assemble params for IndexPoolUtils.normalizeInterpolated:
         */
         // the initial weights in the pool (here a new token has a weight of zero)
         uint256[] memory baseWeights = new uint256[](tokens.length);
@@ -307,10 +307,10 @@ contract IndexPool is IndexPoolUtils, BaseWeightedPool, ReentrancyGuard {
             // here we get the starting weights for the new weight change, that should be the weights
             // as applicable immediately after the first weight change
             // e.g. 49.5/49.5/1 after a tokens has been added to a 50/50 pool
-            _normalizeInterpolated(baseWeights, fixedWeights),
+            normalizeInterpolated(baseWeights, fixedWeights),
             // TODO: here we will need the endWeights as long as they apply until the new token becomes initialized
             // e.g. 45/45/10 after new token becomes initialized and aims for fina target weight of 10%
-            _normalizeInterpolated(desiredWeights, fixedWeights),
+            normalizeInterpolated(desiredWeights, fixedWeights),
             tokens,
             newTokenTargetWeights
         );
