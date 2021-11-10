@@ -44,6 +44,10 @@ export default class TokenList {
     return this.get(2);
   }
 
+  get fourth(): Token {
+    return this.get(3);
+  }
+
   get WETH(): Token {
     return this.findBySymbol('WETH');
   }
