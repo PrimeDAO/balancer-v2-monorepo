@@ -29,7 +29,7 @@ const getTimeForWeightChange = (weightDifference: number) => {
   return (weightDifference / 1e18) * 86400 * 100;
 };
 
-describe.only('IndexPool', function () {
+describe('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress, randomDude: SignerWithAddress, vault: Vault;
 
   before('setup signers', async () => {
@@ -526,7 +526,6 @@ describe.only('IndexPool', function () {
           const defaultFeePercentage = 0.01;
           const defaultUninitializedWeight = fp(0.01);
           const defaultFeeAmount = pct(swapInAmount, defaultFeePercentage);
-          const afterSwapTokenBalance = await allTokens.first.balanceOf(randomDude);
           const expectedAmount = Math.floor(
             calcOutGivenIn(
               standardMinimumBalance,
@@ -536,6 +535,8 @@ describe.only('IndexPool', function () {
               swapInAmount.sub(defaultFeeAmount)
             ).toNumber()
           );
+
+          const afterSwapTokenBalance = await allTokens.first.balanceOf(randomDude);
 
           expect(afterSwapTokenBalance).to.equalWithError(expectedAmount, 0.001);
         });
