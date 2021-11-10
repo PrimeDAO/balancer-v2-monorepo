@@ -329,6 +329,10 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         //cannot swap out uninitialized token
         require(minBalances[swapRequest.tokenOut] == 0, "Uninitialized token");
 
+        if (minBalances[swapRequest.tokenIn] != 0) {
+            currentBalanceTokenIn = minBalances[swapRequest.tokenIn];
+        }
+
         return super.onSwap(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
