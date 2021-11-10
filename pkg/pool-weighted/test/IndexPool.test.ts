@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Transaction } from 'ethers';
+import { BigNumber } from 'ethers';
 import { range } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
@@ -29,11 +29,10 @@ const getTimeForWeightChange = (weightDifference: number) => {
 };
 
 describe('IndexPool', function () {
-  let owner: SignerWithAddress, controller: SignerWithAddress, other: SignerWithAddress, vault: Vault;
+  let owner: SignerWithAddress, other: SignerWithAddress, randomDude: SignerWithAddress, vault: Vault;
 
   before('setup signers', async () => {
-    [, owner, other] = await ethers.getSigners();
-    controller = owner;
+    [, owner, other, randomDude] = await ethers.getSigners();
   });
 
   const MAX_TOKENS = 4;
@@ -381,14 +380,16 @@ describe('IndexPool', function () {
       });
     });
 
-    context('when adding one new token', () => {
+    context.only('when adding one new token', () => {
       const numberNewTokens = 1;
       const numberExistingTokens = 3;
       const indexOfNewToken = 3;
       const newTokenTargetWeight = fp(0.1);
       const originalWeights = [fp(0.4), fp(0.3), fp(0.3)];
       const reindexWeights = [fp(0.5), fp(0.2), fp(0.2), newTokenTargetWeight];
-      const standardMinimumBalance = 1000;
+      const standardMinimumBalance = fp(0.01);
+      const swapInAmount = fp(0.003);
+      const initialTokenAmountsInPool = fp(1);
 
       const minimumBalances = new Array(numberExistingTokens + numberNewTokens).fill(standardMinimumBalance);
 
@@ -405,6 +406,15 @@ describe('IndexPool', function () {
           vault,
         };
         pool = await WeightedPool.create(params);
+      });
+
+      sharedBeforeEach('join pool (aka fund liquidity)', async () => {
+        await tokens.mint({ to: owner, amount: fp(100) });
+        await tokens.approve({ from: owner, to: await pool.getVault() });
+        await pool.init({
+          from: owner,
+          initialBalances: new Array(numberExistingTokens).fill(initialTokenAmountsInPool),
+        });
       });
 
       sharedBeforeEach('call reindexTokens function', async () => {
@@ -471,7 +481,7 @@ describe('IndexPool', function () {
             kind: SwapKind.GivenIn,
             assetIn: reindexTokens[0],
             assetOut: reindexTokens[indexOfNewToken],
-            amount: fp(0.001),
+            amount: swapInAmount,
             userData: '0x',
           };
           const funds = {
@@ -489,8 +499,8 @@ describe('IndexPool', function () {
         });
       });
 
-      context.only('when swapping new token into the pool', () => {
-        let swapTransaction: Transaction;
+      context('when swapping new token into the pool', () => {
+        let swapTransaction: any;
 
         sharedBeforeEach('swap token into pool', async () => {
           const singleSwap = {
@@ -498,23 +508,30 @@ describe('IndexPool', function () {
             kind: SwapKind.GivenIn,
             assetIn: reindexTokens[indexOfNewToken],
             assetOut: reindexTokens[0],
-            amount: fp(0.001),
+            amount: swapInAmount,
             userData: '0x',
           };
           const funds = {
             sender: owner.address,
             fromInternalBalance: false,
-            recipient: other.address,
+            recipient: randomDude.address,
             toInternalBalance: false,
           };
           const limit = 0; // Minimum amount out
           const deadline = MAX_UINT256;
-
-          swapTransaction = vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+          console.log('initial balance of other');
+          console.log((await allTokens.first.balanceOf(randomDude)).toString());
+          await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
         });
 
-        it('does not revert', async () => {
-          await expect(swapTransaction).to.not.be.reverted;
+        it('returns the correct amount to the swapper', async () => {
+          const othersTokenBalance = await allTokens.first.balanceOf(other);
+          console.log(othersTokenBalance.toString());
+          // const tokenAmountBeforeSwap = await allTokens.first.balanceOf(owner);
+          // console.log(tokenAmountBeforeSwap.toString());
+          // await swapTransaction;
+          // const tokenAmountAfterSwap = await allTokens.first.balanceOf(owner);
+          // console.log(tokenAmountAfterSwap.toString());
         });
       });
     });
