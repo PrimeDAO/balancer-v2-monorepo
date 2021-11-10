@@ -40,6 +40,10 @@ export default class TokenList {
     return this.get(1);
   }
 
+  get third(): Token {
+    return this.get(2);
+  }
+
   get WETH(): Token {
     return this.findBySymbol('WETH');
   }
