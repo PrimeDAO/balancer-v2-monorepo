@@ -49,14 +49,22 @@ describe('IndexPool', function () {
   context('with invalid creation parameters', () => {
     const tooManyWeights = [fp(0.3), fp(0.25), fp(0.3), fp(0.1), fp(0.05)];
 
-    it('fails with < 2 tokens', async () => {
+    it('fails with < 3 tokens', async () => {
       const params = {
+        tokens: allTokens.subset(2),
+        weights: [fp(0.3), fp(0.7)],
+        owner,
+        poolType: WeightedPoolType.INDEX_POOL,
+      };
+      await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
+
+      const params2 = {
         tokens: allTokens.subset(1),
         weights: [fp(0.3)],
         owner,
         poolType: WeightedPoolType.INDEX_POOL,
       };
-      await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
+      await expect(WeightedPool.create(params2)).to.be.revertedWith('MIN_TOKENS');
     });
 
     it('fails with mismatched tokens/weights', async () => {
@@ -71,7 +79,7 @@ describe('IndexPool', function () {
   });
 
   describe('weights and scaling factors', () => {
-    for (const numTokens of range(2, MAX_TOKENS + 1)) {
+    for (const numTokens of range(3, MAX_TOKENS + 1)) {
       context(`with ${numTokens} tokens`, () => {
         sharedBeforeEach('deploy pool', async () => {
           tokens = allTokens.subset(numTokens);
