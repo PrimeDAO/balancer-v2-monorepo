@@ -31,6 +31,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
     uint256 private constant _MAX_TOKENS = 50;
     uint256 private constant _INITIAL_WEIGHT = 10**16;
+    uint256 private constant _MIN_TOKENS = 3;
 
     // Use the _miscData slot in BasePool
     // First 64 bits are reserved for the swap fee
@@ -92,6 +93,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
+
+        _require(params.tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
 
         _setMiscData(_getMiscData().insertUint7(numTokens, _TOTAL_TOKENS_OFFSET));
         // Double check it fits in 7 bits
