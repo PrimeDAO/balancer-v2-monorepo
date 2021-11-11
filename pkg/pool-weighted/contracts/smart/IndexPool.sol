@@ -341,7 +341,14 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             */
             if (currentBalanceTokenIn.add(swapRequest.amount) >= minBalances[swapRequest.tokenIn]) {
                 currentBalanceTokenIn = minBalances[swapRequest.tokenIn];
+                // reset minimumBalance to zero
                 minBalances[swapRequest.tokenIn] = 0;
+                // initiate new weight change
+                (, , , , uint256[] memory newTokenTargetWeights) = getGradualWeightUpdateParams();
+                (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+                uint256[] memory normalizedWeights = _getNormalizedWeights();
+
+                // TODO: invoke reweighTokens
             } else {
                 currentBalanceTokenIn = minBalances[swapRequest.tokenIn];
             }
