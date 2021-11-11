@@ -575,8 +575,7 @@ describe('IndexPool', function () {
 
         it('resets the minimum balance for the to-be-intialized token to zero', async () => {
           const minimumBalance = await pool.minBalances(reindexTokens[newTokenIndex]);
-          console.log(minimumBalance);
-          // expect(minimumBalance).to.equal(0);
+          expect(minimumBalance).to.equal(0);
         });
       });
     });
