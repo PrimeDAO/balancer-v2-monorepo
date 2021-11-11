@@ -510,6 +510,35 @@ describe('IndexPool', function () {
           expect(afterSwapTokenBalance).to.equalWithError(expectedAmount, 0.001);
         });
       });
+
+      context.only("when the pool's actual token balance exceeds it's minimum balance", () => {
+        sharedBeforeEach('swap token into pool', async () => {
+          const numberOfSwapsUntilInitialization = 4;
+
+          const singleSwap = {
+            poolId,
+            kind: SwapKind.GivenIn,
+            assetIn: reindexTokens[newTokenIndex],
+            assetOut: reindexTokens[0],
+            amount: swapInAmount,
+            userData: '0x',
+          };
+          const funds = {
+            sender: owner.address,
+            fromInternalBalance: false,
+            recipient: randomDude.address,
+            toInternalBalance: false,
+          };
+          const limit = 0; // Minimum amount out
+          const deadline = MAX_UINT256;
+
+          for (let i = 0; i < numberOfSwapsUntilInitialization; i++) {
+            await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+          }
+        });
+
+        it('removes the minimum balance for the token', async () => {});
+      });
     });
   });
 });
