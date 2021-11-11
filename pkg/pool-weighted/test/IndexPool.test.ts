@@ -541,6 +541,13 @@ describe('IndexPool', function () {
           const minimumBalance = await pool.minBalances(reindexTokens[newTokenIndex]);
           expect(minimumBalance).to.equal(0);
         });
+
+        it('initializes a weight change to the new target weight', async () => {
+          const updateParams = await pool.getGradualWeightUpdateParams();
+          console.log(updateParams);
+          // const minimumBalance = await pool.minBalances(reindexTokens[newTokenIndex]);
+          // expect(minimumBalance).to.equal(0);
+        });
       });
     });
   });
