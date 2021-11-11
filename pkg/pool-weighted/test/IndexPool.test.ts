@@ -454,6 +454,31 @@ describe('IndexPool', function () {
 
         expect(newTokenTargetWeights).to.equalWithError(expectedNewTokenTargetWeights, 0.0001);
       });
+
+      context('when attempting to swap new token out of pool', () => {
+        it('reverts "Uninitialized token"', async () => {
+          const singleSwap = {
+            poolId,
+            kind: SwapKind.GivenIn,
+            assetIn: reindexTokens[0],
+            assetOut: reindexTokens[3],
+            amount: fp(0.001),
+            userData: '0x',
+          };
+          const funds = {
+            sender: owner.address,
+            fromInternalBalance: false,
+            recipient: other.address,
+            toInternalBalance: false,
+          };
+          const limit = 0; // Minimum amount out
+          const deadline = MAX_UINT256;
+
+          await expect(vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline)).to.be.revertedWith(
+            'Uninitialized token'
+          );
+        });
+      });
     });
   });
 });
