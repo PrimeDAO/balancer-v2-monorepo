@@ -50,6 +50,8 @@ import {
 } from './math';
 import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { Address } from 'cluster';
+import { ContractType } from 'hardhat/internal/hardhat-network/stack-traces/model';
 
 const MAX_IN_RATIO = fp(0.3);
 const MAX_OUT_RATIO = fp(0.3);
@@ -641,15 +643,22 @@ export default class WeightedPool {
     return { amounts: result.collectedFees, tokenAddresses: result.tokens };
   }
 
-  async reweighTokens(tokens: string[], normalizedWeights: BigNumberish[]): Promise<ContractTransaction> {
-    return await this.instance.reweighTokens(tokens, normalizedWeights);
+  async reweighTokens(
+    from: SignerWithAddress,
+    tokens: string[],
+    normalizedWeights: BigNumberish[]
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return await pool.reweighTokens(tokens, normalizedWeights);
   }
 
   async reindexTokens(
+    from: SignerWithAddress,
     tokens: string[],
     normalizedWeights: BigNumberish[],
     minimumBalances: BigNumberish[]
   ): Promise<ContractTransaction> {
-    return await this.instance.reindexTokens(tokens, normalizedWeights, minimumBalances);
+    const pool = this.instance.connect(from);
+    return await pool.reindexTokens(tokens, normalizedWeights, minimumBalances);
   }
 }

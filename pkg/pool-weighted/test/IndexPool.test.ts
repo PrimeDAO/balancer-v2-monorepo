@@ -29,10 +29,11 @@ const getTimeForWeightChange = (weightDifference: number) => {
 };
 
 describe('IndexPool', function () {
-  let owner: SignerWithAddress, other: SignerWithAddress, vault: Vault;
+  let owner: SignerWithAddress, controller: SignerWithAddress, other: SignerWithAddress, vault: Vault;
 
   before('setup signers', async () => {
     [, owner, other] = await ethers.getSigners();
+    controller = owner;
   });
 
   const MAX_TOKENS = 4;
@@ -55,7 +56,7 @@ describe('IndexPool', function () {
       const params = {
         tokens: allTokens.subset(1),
         weights: [fp(0.3)],
-        owner,
+        owner: controller,
         poolType: WeightedPoolType.INDEX_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
@@ -65,7 +66,7 @@ describe('IndexPool', function () {
       const params = {
         tokens,
         weights: tooManyWeights,
-        owner,
+        owner: controller,
         poolType: WeightedPoolType.INDEX_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
@@ -108,7 +109,7 @@ describe('IndexPool', function () {
       const params = {
         tokens,
         weights,
-        owner,
+        owner: controller,
         poolType: WeightedPoolType.INDEX_POOL,
         fromFactory: true,
       };
@@ -129,7 +130,7 @@ describe('IndexPool', function () {
         const params = {
           tokens,
           weights,
-          owner,
+          owner: controller,
           poolType: WeightedPoolType.INDEX_POOL,
           swapEnabledOnStart: false,
         };
@@ -236,19 +237,29 @@ describe('IndexPool', function () {
       const params = {
         tokens,
         weights,
-        owner,
+        owner: controller,
         poolType: WeightedPoolType.INDEX_POOL,
         swapEnabledOnStart: false,
       };
       pool = await WeightedPool.create(params);
     });
 
+    context('when not called by the controller', () => {
+      it('reverts: "BAL#401 (SENDER_NOT_ALLOWED)"', async () => {
+        const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
+        const twoWeights = [fp(0.5), fp(0.5)];
+
+        await expect(pool.reweighTokens(other, threeAddresses, twoWeights)).to.be.revertedWith('BAL#401');
+      });
+    });
     context('when input array lengths differ', () => {
       it('reverts: "INPUT_LENGTH_MISMATCH"', async () => {
         const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
         const twoWeights = [fp(0.5), fp(0.5)];
 
-        await expect(pool.reweighTokens(threeAddresses, twoWeights)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+        await expect(pool.reweighTokens(controller, threeAddresses, twoWeights)).to.be.revertedWith(
+          'INPUT_LENGTH_MISMATCH'
+        );
       });
     });
 
@@ -257,7 +268,7 @@ describe('IndexPool', function () {
         const addresses = allTokens.subset(2).tokens.map((token) => token.address);
         const denormalizedWeights = [fp(0.5), fp(0.3)];
 
-        await expect(pool.reweighTokens(addresses, denormalizedWeights)).to.be.revertedWith(
+        await expect(pool.reweighTokens(controller, addresses, denormalizedWeights)).to.be.revertedWith(
           'NORMALIZED_WEIGHT_INVARIANT'
         );
       });
@@ -268,6 +279,7 @@ describe('IndexPool', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         await pool.reweighTokens(
+          controller,
           allTokens.subset(4).tokens.map((token) => token.address),
           desiredWeights
         );
@@ -296,12 +308,24 @@ describe('IndexPool', function () {
         const params = {
           tokens: tokens.subset(3),
           weights: [fp(0.6), fp(0.2), fp(0.2)],
-          owner,
+          owner: controller,
           poolType: WeightedPoolType.INDEX_POOL,
           fromFactory: true,
           vault,
         };
         pool = await WeightedPool.create(params);
+      });
+
+      context('when not called by the controller', () => {
+        it('reverts: ""BAL#401 (SENDER_NOT_ALLOWED)"', async () => {
+          const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
+          const twoWeights = [fp(0.5), fp(0.5)];
+          const threeMinimumBalances = [1000, 2000, 3000];
+
+          await expect(pool.reindexTokens(other, threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
+            'BAL#401'
+          );
+        });
       });
 
       context('when input array lengths differ', () => {
@@ -310,9 +334,9 @@ describe('IndexPool', function () {
           const twoWeights = [fp(0.5), fp(0.5)];
           const threeMinimumBalances = [1000, 2000, 3000];
 
-          await expect(pool.reindexTokens(threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
-            'INPUT_LENGTH_MISMATCH'
-          );
+          await expect(
+            pool.reindexTokens(controller, threeAddresses, twoWeights, threeMinimumBalances)
+          ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
         it('reverts "INPUT_LENGTH_MISMATCH" if lengths of tokens and minimum balances differ', async () => {
@@ -320,9 +344,9 @@ describe('IndexPool', function () {
           const threeWeights = [fp(0.4), fp(0.5), fp(0.1)];
           const twoMinimumBalances = [1000, 2000];
 
-          await expect(pool.reindexTokens(threeAddresses, threeWeights, twoMinimumBalances)).to.be.revertedWith(
-            'INPUT_LENGTH_MISMATCH'
-          );
+          await expect(
+            pool.reindexTokens(controller, threeAddresses, threeWeights, twoMinimumBalances)
+          ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
         it('reverts "INPUT_LENGTH_MISMATCH" if lengths of weights and minimum balances differ', async () => {
@@ -330,9 +354,9 @@ describe('IndexPool', function () {
           const twoWeights = [fp(0.5), fp(0.5)];
           const threeMinimumBalances = [1000, 2000, 3000];
 
-          await expect(pool.reindexTokens(threeAddresses, twoWeights, threeMinimumBalances)).to.be.revertedWith(
-            'INPUT_LENGTH_MISMATCH'
-          );
+          await expect(
+            pool.reindexTokens(controller, threeAddresses, twoWeights, threeMinimumBalances)
+          ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
       });
 
@@ -342,7 +366,7 @@ describe('IndexPool', function () {
           const weights = [fp(0.5), fp(0.5)];
           const invalidMinimumBalances = [1000, 0];
 
-          await expect(pool.reindexTokens(addresses, weights, invalidMinimumBalances)).to.be.revertedWith(
+          await expect(pool.reindexTokens(controller, addresses, weights, invalidMinimumBalances)).to.be.revertedWith(
             'Invalid zero minimum balance'
           );
         });
@@ -366,7 +390,7 @@ describe('IndexPool', function () {
         const params = {
           tokens: tokens.subset(numberExistingTokens),
           weights: originalWeights,
-          owner,
+          owner: controller,
           poolType: WeightedPoolType.INDEX_POOL,
           fromFactory: true,
           vault,
@@ -377,7 +401,7 @@ describe('IndexPool', function () {
       sharedBeforeEach('call reindexTokens function', async () => {
         reindexTokens = allTokens.subset(numberExistingTokens + numberNewTokens).tokens.map((token) => token.address);
         poolId = await pool.getPoolId();
-        await pool.reindexTokens(reindexTokens, reindexWeights, minimumBalances);
+        await pool.reindexTokens(controller, reindexTokens, reindexWeights, minimumBalances);
       });
 
       it('adds the new token to the vault registry', async () => {

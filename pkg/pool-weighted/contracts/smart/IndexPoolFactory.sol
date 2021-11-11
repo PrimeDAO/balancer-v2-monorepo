@@ -36,7 +36,7 @@ contract IndexPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
         IERC20[] memory tokens,
         uint256[] memory weights,
         uint256 swapFeePercentage,
-        address owner
+        address controller
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
         return
@@ -51,7 +51,7 @@ contract IndexPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
                         swapFeePercentage: swapFeePercentage,
                         pauseWindowDuration: pauseWindowDuration,
                         bufferPeriodDuration: bufferPeriodDuration,
-                        owner: owner
+                        controller: controller
                     })
                 )
             );

@@ -136,7 +136,7 @@ export default {
               swapFeePercentage: swapFeePercentage,
               pauseWindowDuration: pauseWindowDuration,
               bufferPeriodDuration: bufferPeriodDuration,
-              owner: TypesConverter.toAddress(owner),
+              controller: TypesConverter.toAddress(owner),
             },
           ],
           from,

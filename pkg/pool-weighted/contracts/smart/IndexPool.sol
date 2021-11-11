@@ -74,7 +74,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         uint256 swapFeePercentage;
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
-        address owner;
+        address controller;
     }
 
     constructor(NewPoolParams memory params)
@@ -87,7 +87,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             params.swapFeePercentage,
             params.pauseWindowDuration,
             params.bufferPeriodDuration,
-            params.owner
+            params.controller
         )
     {
         uint256 numTokens = params.tokens.length;
@@ -243,7 +243,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         );
     }
 
-    function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public {
+    function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
         uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
         require(block.timestamp >= endTime, "Weight change is already in process");
         InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
@@ -255,7 +255,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         IERC20[] memory tokens,
         uint256[] memory desiredWeights,
         uint256[] memory minimumBalances
-    ) external {
+    ) external authenticate {
         InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length, minimumBalances.length);
 
         /*
@@ -445,5 +445,12 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         uint256 decimalsDifference = tokenState.decodeUint5(_DECIMAL_DIFF_OFFSET);
 
         return FixedPoint.ONE * 10**decimalsDifference;
+    }
+
+    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
+        return
+            (actionId == getActionId(this.reindexTokens.selector)) ||
+            (actionId == getActionId(this.reweighTokens.selector)) ||
+            super._isOwnerOnlyAction(actionId);
     }
 }
