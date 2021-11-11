@@ -23,6 +23,8 @@ import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
 import "./WeightedMath.sol";
 import "./WeightedPoolUserDataHelpers.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @dev Base class for WeightedPools containing swap, join and exit logic, but leaving storage and management of
  * the weights to subclasses. Derived contracts can choose to make weights immutable, mutable, or even dynamic
@@ -124,7 +126,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 currentBalanceTokenOut
     ) internal view virtual override whenNotPaused returns (uint256) {
         // Swaps are disabled while the contract is paused.
-
+        console.log(currentBalanceTokenIn);
         return
             WeightedMath._calcOutGivenIn(
                 currentBalanceTokenIn,

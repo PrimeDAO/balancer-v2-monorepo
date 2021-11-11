@@ -21,6 +21,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "./WeightCompression.sol";
 import "../utils/IndexPoolUtils.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
@@ -247,13 +249,13 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         );
     }
 
-    function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
-        uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
-        require(block.timestamp >= endTime, "Weight change is already in process");
-        InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
-        uint256 changeTime = _calcReweighTime(tokens, desiredWeights);
-        _updateWeightsGradually(block.timestamp, block.timestamp.add(changeTime), desiredWeights);
-    }
+    // function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public {
+    //     uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
+    //     require(block.timestamp >= endTime, "Weight change is already in process");
+    //     InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
+    //     uint256 changeTime = _calcReweighTime(tokens, desiredWeights);
+    //     _updateWeightsGradually(block.timestamp, block.timestamp.add(changeTime), desiredWeights);
+    // }
 
     function reindexTokens(
         IERC20[] memory tokens,
@@ -333,8 +335,20 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         //cannot swap out uninitialized token
         require(minBalances[swapRequest.tokenOut] == 0, "Uninitialized token");
 
+        // check if it is a swap where an uninitialized token will be swapped INTO the pool
         if (minBalances[swapRequest.tokenIn] != 0) {
+            // use fake token amount for exchange rate calculation
             currentBalanceTokenIn = minBalances[swapRequest.tokenIn];
+            /* 
+                check if swap makes token become initialized and do a bunch of things:
+                - set minimumBalance for initialized token to zero
+            */
+            if (currentBalanceTokenIn.add(swapRequest.amount) >= minBalances[swapRequest.tokenIn]) {
+                minBalances[swapRequest.tokenIn] = 0;
+            }
+            console.log(currentBalanceTokenIn);
+            console.log(swapRequest.amount);
+            console.log(currentBalanceTokenOut);
         }
 
         return super.onSwap(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
