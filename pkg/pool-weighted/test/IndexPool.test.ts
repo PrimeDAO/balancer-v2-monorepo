@@ -30,10 +30,15 @@ const getTimeForWeightChange = (weightDifference: number) => {
 };
 
 describe('IndexPool', function () {
-  let owner: SignerWithAddress, other: SignerWithAddress, randomDude: SignerWithAddress, vault: Vault;
+  let owner: SignerWithAddress,
+    controller: SignerWithAddress,
+    other: SignerWithAddress,
+    randomDude: SignerWithAddress,
+    vault: Vault;
 
   before('setup signers', async () => {
     [, owner, other, randomDude] = await ethers.getSigners();
+    controller = owner;
   });
 
   const MAX_TOKENS = 4;
