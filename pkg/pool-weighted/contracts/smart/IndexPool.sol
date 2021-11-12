@@ -21,8 +21,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "./WeightCompression.sol";
 import "../utils/IndexPoolUtils.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
@@ -189,7 +187,6 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         bytes32 tokenState;
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
-            // console.log(endWeight);
             _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
             tokenState = tokenState
                 .insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET)
