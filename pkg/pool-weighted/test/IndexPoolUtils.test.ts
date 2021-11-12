@@ -225,6 +225,27 @@ describe('IndexPoolUtils', function () {
           expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
         });
       });
+
+      describe('with 55/22/22/1 pool to be transferred in a ?/?/?/?/1 pool', () => {
+        const baseWeights = [0.55, 0.22, 0.22, 0.01];
+        const fixedWeights = [0, 0, 0, 0.1];
+
+        beforeEach(async () => {
+          receivedWeights = await indexPoolUtilsInstance.normalizeInterpolatedMock(
+            baseWeights.map((w) => fp(w)),
+            fixedWeights.map((w) => fp(w))
+          );
+        });
+
+        it('returns the correct weights 66/33/1', async () => {
+          const expectedWeights = [0.5, 0.2, 0.2, 0.1].map((pct) => fp(pct));
+          expect(receivedWeights).to.equalWithError(expectedWeights, 0.0001);
+        });
+
+        it('returns normalized weights', async () => {
+          expect(getTotalWeight(receivedWeights)).to.equal(HUNDRED_PERCENT);
+        });
+      });
     });
 
     describe('with random input weights', () => {
