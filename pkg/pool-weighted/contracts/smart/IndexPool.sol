@@ -355,7 +355,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                  2. initiate new weight change this time with the final target weights (from reindex call)
                  3. the final target weights are updated within _startGradualWeightChange for gas saving
                 */
-                // create fixedWeights (0/0/0/0/1)
+                // create fixedWeights (e.g. 0/0/0/0/1)
                 uint256[] memory fixedWeights = new uint256[](tokens.length);
                 uint256[] memory newTokenTargetWeights = new uint256[](tokens.length);
                 for (uint256 i = 0; i < tokens.length; i++) {
@@ -367,7 +367,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                     if (finalTokenTargetWeight != 0) {
                         // it's an uninitialized token
 
-                        // if its the to-be-initialized token set its fixed weight to zero
+                        // if its the to-be-initialized token, set its fixed weight to zero
                         // else its a still-not-initialized token => set its fixed weight to 1
                         fixedWeights[i] = tokens[i] == swapRequest.tokenIn ? 0 : _INITIAL_WEIGHT;
                         newTokenTargetWeights[i] = tokens[i] == swapRequest.tokenIn ? 0 : finalTokenTargetWeight;
