@@ -189,7 +189,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
         bytes32 tokenState;
         for (uint256 i = 0; i < oldTokens.length; i++){
-            tokenState = _tokenState[IERC20(tokens[i])];
+            tokenState = _tokenState[IERC20(oldTokens[i])];
             uint256 remove_flag = tokenState.decodeUint5(_REMOVE_FLAG_OFFSET);
             // checking if token was listed in the array of new tokens
             if(remove_flag != _SAVE_FLAG){
@@ -197,14 +197,14 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                 tokenState = tokenState
                 .insertUint64(_getNormalizedWeight(IERC20(oldTokens[i])).compress64(), _START_WEIGHT_OFFSET)
                 .insertUint32((FixedPoint.ONE).compress32(), _END_WEIGHT_OFFSET)
-                .insertUint5(uint256(18).sub(ERC20(address(tokens[i])).decimals()), _DECIMAL_DIFF_OFFSET)
+                .insertUint5(uint256(18).sub(ERC20(address(oldTokens[i])).decimals()), _DECIMAL_DIFF_OFFSET)
                 .insertUint5(_REMOVE_FLAG, _REMOVE_FLAG_OFFSET);
 
                 // write new token state to storage
-                _tokenState[IERC20(tokens[i])] = tokenState;
+                _tokenState[IERC20(oldTokens[i])] = tokenState;
 
             } else {
-                _tokenState[IERC20(tokens[i])] =tokenState.insertUint5(_NORMAL_FLAG, _REMOVE_FLAG_OFFSET);
+                _tokenState[IERC20(oldTokens[i])] =tokenState.insertUint5(_NORMAL_FLAG, _REMOVE_FLAG_OFFSET);
             }
         }
     }
