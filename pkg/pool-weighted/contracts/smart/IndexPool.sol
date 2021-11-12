@@ -70,7 +70,6 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _SAVE_FLAG = 1;
     uint256 private constant _REMOVE_FLAG = 2;
 
-    uint256 private constant _SECONDS_IN_A_DAY = 86400;
 
     struct NewPoolParams {
         IVault vault;
@@ -194,10 +193,10 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             if(remove_flag != _SAVE_FLAG){
                 // setting desired weight to 1 %, current weight to current %, and adding REMOVE_FLAG
                 tokenState = tokenState
-                .insertUint64(_getNormalizedWeight(IERC20(oldTokens[i])).compress64(), _START_WEIGHT_OFFSET)
-                .insertUint32((FixedPoint.ONE).compress32(), _END_WEIGHT_OFFSET)
-                .insertUint5(uint256(18).sub(ERC20(address(oldTokens[i])).decimals()), _DECIMAL_DIFF_OFFSET)
-                .insertUint5(_REMOVE_FLAG, _REMOVE_FLAG_OFFSET);
+                    .insertUint64(_getNormalizedWeight(IERC20(oldTokens[i])).compress64(), _START_WEIGHT_OFFSET)
+                    .insertUint32((FixedPoint.ONE).compress32(), _END_WEIGHT_OFFSET)
+                    .insertUint5(uint256(18).sub(ERC20(address(oldTokens[i])).decimals()), _DECIMAL_DIFF_OFFSET)
+                    .insertUint5(_REMOVE_FLAG, _REMOVE_FLAG_OFFSET);
 
                 // write new token state to storage
                 _tokenState[IERC20(oldTokens[i])] = tokenState;
@@ -291,13 +290,13 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         );
     }
 
-    function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
-        uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
-        require(block.timestamp >= endTime, "Weight change is already in process");
-        InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
-        uint256 changeTime = _calcReweighTime(tokens, desiredWeights);
-        _updateWeightsGradually(block.timestamp, block.timestamp.add(changeTime), desiredWeights);
-    }
+//    function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
+//        uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
+//        require(block.timestamp >= endTime, "Weight change is already in process");
+//        InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
+//        uint256 changeTime = IndexPoolUtils._calcReweighTime(tokens, desiredWeights, _getNormalizedWeights());
+//        _updateWeightsGradually(block.timestamp, block.timestamp.add(changeTime), desiredWeights);
+//    }
 
     function reindexTokens(
         IERC20[] memory tokens,
@@ -353,7 +352,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             block.timestamp,
             // !! here we make a simplifaction by calculating the time based
             // just looking at the initial startWeights vs finalEndweights
-            block.timestamp + _calcReweighTime(tokens, desiredWeights),
+            block.timestamp + IndexPoolUtils._calcReweighTime(tokens, desiredWeights, _getNormalizedWeights()),
             // here we get the starting weights for the new weight change, that should be the weights
             // as applicable immediately after the first weight change
             // e.g. 49.5/49.5/1 after a tokens has been added to a 50/50 pool
@@ -386,63 +385,16 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         return super.onSwap(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
-    /// @dev Calculates the time horizon for a rebasing based on max weight change.
-    /// @param tokens Array with addresses of tokens.
-    /// @param desiredWeights Array with desired weights of tokens. Must be in same order.
-    /// @return changeTime Time horizon for the rebalancing period
-    function _calcReweighTime(IERC20[] memory tokens, uint256[] memory desiredWeights)
-        internal
-        view
-        returns (uint256 changeTime)
-    {
-        uint256 diff = 0;
-        uint256 numTokens = tokens.length;
-
-        uint256 normalizedSum = 0;
-        for (uint8 i = 0; i < numTokens; i++) {
-            uint256 normalizedWeight = _getNormalizedWeight(IERC20(tokens[i]));
-
-            if (desiredWeights[i] > normalizedWeight) {
-                if (diff < desiredWeights[i].sub(normalizedWeight)) {
-                    diff = desiredWeights[i].sub(normalizedWeight);
-                }
-            } else {
-                if (diff < normalizedWeight.sub(desiredWeights[i])) {
-                    diff = normalizedWeight.sub(desiredWeights[i]);
-                }
-            }
-            normalizedSum = normalizedSum.add(desiredWeights[i]);
-        }
-
-        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
-        changeTime = ((diff.mulDown(_SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
-    }
-
     function _registerNewTokensWithVault(IERC20[] memory newTokensContainer, uint8 amountNewTokens) internal {
         getVault().registerTokens(getPoolId(), newTokensContainer, new address[](amountNewTokens));
     }
 
-    function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private pure returns (uint256 finalWeight) {
-        uint256 startWeight = tokenData.decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
-        uint256 endWeight = tokenData.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
-
-        if (pctProgress == 0 || startWeight == endWeight) return startWeight;
-        if (pctProgress >= FixedPoint.ONE) return endWeight;
-
-        if (startWeight > endWeight) {
-            uint256 weightDelta = pctProgress.mulDown(startWeight.sub(endWeight));
-            return startWeight.sub(weightDelta);
-        } else {
-            uint256 weightDelta = pctProgress.mulDown(endWeight.sub(startWeight));
-            return startWeight.add(weightDelta);
-        }
-    }
 
     function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
         uint256 pctProgress = _calculateWeightChangeProgress();
         bytes32 tokenData = _getTokenData(token);
 
-        return _interpolateWeight(tokenData, pctProgress);
+        return IndexPoolUtils._interpolateWeight(tokenData, pctProgress);
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
@@ -456,9 +408,10 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         for (uint256 i = 0; i < numTokens; i++) {
             bytes32 tokenData = _tokenState[tokens[i]];
 
-            normalizedWeights[i] = _interpolateWeight(tokenData, pctProgress);
+            normalizedWeights[i] = IndexPoolUtils._interpolateWeight(tokenData, pctProgress);
         }
     }
+
 
     function _getNormalizedWeightsAndMaxWeightIndex()
         internal
@@ -515,7 +468,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
             (actionId == getActionId(this.reindexTokens.selector)) ||
-            (actionId == getActionId(this.reweighTokens.selector)) ||
+//            (actionId == getActionId(this.reweighTokens.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
 }

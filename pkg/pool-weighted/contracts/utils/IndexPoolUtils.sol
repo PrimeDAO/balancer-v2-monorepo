@@ -3,14 +3,29 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "../smart/WeightCompression.sol";
+
 
 library IndexPoolUtils {
     using FixedPoint for uint256;
-    using Math for uint256;
+//    using Math for uint256;
+//    using SafeMath for uint256;
+    using WordCodec for bytes32;
+    using WeightCompression for uint256;
 
     uint256 internal constant _PRECISION = 18;
     uint256 internal constant _HUNDRED_PERCENT = 10**_PRECISION;
     uint256 internal constant _UNINITIALIZED_WEIGHT = _HUNDRED_PERCENT / 100;
+
+
+    // Offsets for data elements in _tokenState
+    uint256 private constant _START_WEIGHT_OFFSET = 0;
+    uint256 private constant _END_WEIGHT_OFFSET = 64;
+
+
+    uint256 private constant _SECONDS_IN_A_DAY = 86400;
 
     /// @dev Scales baseWeights up/down so that resulting weights array is normalized.
     /// @param _baseWeights Array with weights of tokens. Those that are non-zero need to be scaled.
@@ -112,4 +127,53 @@ library IndexPoolUtils {
 
         return FixedPoint.mulUp(_UNINITIALIZED_WEIGHT, incentivizationFactor);
     }
+
+
+    function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) internal pure returns (uint256 finalWeight) {
+        uint256 startWeight = tokenData.decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
+        uint256 endWeight = tokenData.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+
+        if (pctProgress == 0 || startWeight == endWeight) return startWeight;
+        if (pctProgress >= FixedPoint.ONE) return endWeight;
+
+        if (startWeight > endWeight) {
+            uint256 weightDelta = pctProgress.mulDown(startWeight.sub(endWeight));
+            return startWeight.sub(weightDelta);
+        } else {
+            uint256 weightDelta = pctProgress.mulDown(endWeight.sub(startWeight));
+            return startWeight.add(weightDelta);
+        }
+    }
+
+    /// @dev Calculates the time horizon for a rebasing based on max weight change.
+    /// @param tokens Array with addresses of tokens.
+    /// @param desiredWeights Array with desired weights of tokens. Must be in same order.
+    /// @return changeTime Time horizon for the rebalancing period
+    function _calcReweighTime(IERC20[] memory tokens, uint256[] memory desiredWeights, uint256[] memory normalizedWeights)
+    internal
+    view
+    returns (uint256 changeTime)
+    {
+        uint256 diff = 0;
+        uint256 numTokens = tokens.length;
+
+        uint256 normalizedSum = 0;
+        for (uint8 i = 0; i < numTokens; i++) {
+
+            if (desiredWeights[i] > normalizedWeights[i]) {
+                if (diff < desiredWeights[i].sub(normalizedWeights[i])) {
+                    diff = desiredWeights[i].sub(normalizedWeights[i]);
+                }
+            } else {
+                if (diff < normalizedWeights[i].sub(desiredWeights[i])) {
+                    diff = normalizedWeights[i].sub(desiredWeights[i]);
+                }
+            }
+            normalizedSum = normalizedSum.add(desiredWeights[i]);
+        }
+
+        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
+        changeTime = ((diff.mulDown(_SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
+    }
+
 }

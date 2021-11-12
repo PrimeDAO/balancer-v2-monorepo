@@ -15,6 +15,7 @@ export default {
     default: {
       gas: 5000000000,
       blockGasLimit: 10000000000,
+      allowUnlimitedContractSize: true,
     },
   },
   solidity: {
