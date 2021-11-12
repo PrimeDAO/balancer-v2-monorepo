@@ -49,8 +49,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
-    // [ 123 bits| 32 bits        |   5 bits |  32 bits   |   64 bits    ]
-    // [ unused  | target weights | decimals | end weight | start weight ]
+    // [ 118 bits | 5 bits | 32 bits        |   5 bits |  32 bits   |   64 bits    ]
+    // [ unused   | remove | target weights | decimals | end weight | start weight ]
     // |MSB                                          LSB|
     mapping(IERC20 => bytes32) private _tokenState;
 
@@ -63,6 +63,12 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
     uint256 private constant _UNINITIALIZED_OFFSET = 101;
     uint256 private constant _NEW_TOKEN_TARGET_WEIGHT_OFFSET = 106;
+    uint256 private constant _REMOVE_FLAG_OFFSET = 138;
+
+
+    uint256 private constant _NORMAL_FLAG = 0;
+    uint256 private constant _SAVE_FLAG = 1;
+    uint256 private constant _REMOVE_FLAG = 2;
 
     uint256 private constant _SECONDS_IN_A_DAY = 86400;
 
@@ -171,6 +177,38 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         return secondsElapsed.divDown(totalSeconds);
     }
 
+    function _removeMissedTokens(
+        uint256 startTime,
+        uint256 endTime,
+        IERC20[] memory tokens
+    ) internal virtual {
+
+        // This is an array of oldTokens which will be trimmed to understand what tokens are removed
+        (IERC20[] memory oldTokens, , ) = getVault().getPoolTokens(getPoolId());
+        require(oldTokens.length < 50);
+
+        bytes32 tokenState;
+        for (uint256 i = 0; i < oldTokens.length; i++){
+            tokenState = _tokenState[IERC20(tokens[i])];
+            uint256 remove_flag = tokenState.decodeUint5(_REMOVE_FLAG_OFFSET);
+            // checking if token was listed in the array of new tokens
+            if(remove_flag != _SAVE_FLAG){
+                // setting desired weight to 1 %, current weight to current %, and adding REMOVE_FLAG
+                tokenState = tokenState
+                .insertUint64(_getNormalizedWeight(IERC20(oldTokens[i])).compress64(), _START_WEIGHT_OFFSET)
+                .insertUint32((FixedPoint.ONE).compress32(), _END_WEIGHT_OFFSET)
+                .insertUint5(uint256(18).sub(ERC20(address(tokens[i])).decimals()), _DECIMAL_DIFF_OFFSET)
+                .insertUint5(_REMOVE_FLAG, _REMOVE_FLAG_OFFSET);
+
+                // write new token state to storage
+                _tokenState[IERC20(tokens[i])] = tokenState;
+
+            } else {
+                _tokenState[IERC20(tokens[i])] =tokenState.insertUint5(_NORMAL_FLAG, _REMOVE_FLAG_OFFSET);
+            }
+        }
+    }
+
     /**
      * @dev When calling _updateWeightsGradually again during an update,
      * reset the start weights to the current weights, if necessary.
@@ -193,12 +231,12 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                 .insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET)
                 .insertUint5(uint256(18).sub(ERC20(address(tokens[i])).decimals()), _DECIMAL_DIFF_OFFSET);
 
-            // setting the final target weight here allowss us to save gas by writing to storage only once per token
+            // setting the final target weight here allows us to save gas by writing to storage only once per token
             if (newTokenTargetWeights[i] != 0) {
                 tokenState = tokenState.insertUint32(
-                    newTokenTargetWeights[i].compress32(),
-                    _NEW_TOKEN_TARGET_WEIGHT_OFFSET
-                );
+                newTokenTargetWeights[i].compress32(),
+                _NEW_TOKEN_TARGET_WEIGHT_OFFSET
+                ).insertUint5(_NORMAL_FLAG, _REMOVE_FLAG_OFFSET);
             }
 
             // write new token state to storage
@@ -214,7 +252,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             _getMiscData().insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET)
         );
         //        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
-    }
+
+}
 
     /**
      * @dev Schedule a gradual weight change, from the current weights to the given endWeights,
@@ -225,6 +264,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         uint256 endTime,
         uint256[] memory endWeights
     ) internal nonReentrant {
+
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
 
         // If the start time is in the past, "fast forward" to start now
@@ -236,6 +276,12 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+
+        _removeMissedTokens(
+            startTime,
+            endTime,
+            tokens
+        );
 
         _startGradualWeightChange(
             startTime,
@@ -299,6 +345,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             } else {
                 // currentToken is existing (not new) token
                 baseWeights[i] = _getNormalizedWeight(IERC20(tokens[i]));
+                // currentToken is being saved to mitigate its removal
+                _tokenState[IERC20(tokens[i])] = currentTokenState.insertUint5(_SAVE_FLAG, _REMOVE_FLAG_OFFSET);
             }
         }
         _registerNewTokensWithVault(newTokensContainer, newTokenCounter);
@@ -373,12 +421,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _registerNewTokensWithVault(IERC20[] memory newTokensContainer, uint8 amountNewTokens) internal {
-        IERC20[] memory newTokens = new IERC20[](amountNewTokens);
-
-        for (uint8 i = 0; i < amountNewTokens; i++) {
-            newTokens[i] = newTokensContainer[i];
-        }
-        getVault().registerTokens(getPoolId(), newTokens, new address[](newTokens.length));
+        getVault().registerTokens(getPoolId(), newTokensContainer, new address[](amountNewTokens));
     }
 
     function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private pure returns (uint256 finalWeight) {

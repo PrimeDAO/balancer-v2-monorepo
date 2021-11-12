@@ -11,6 +11,12 @@ import overrideQueryFunctions from '@balancer-labs/v2-helpers/plugins/overrideQu
 task(TASK_COMPILE).setAction(overrideQueryFunctions);
 
 export default {
+  network: {
+    default: {
+      gas: 5000000000,
+      blockGasLimit: 10000000000,
+    },
+  },
   solidity: {
     compilers: hardhatBaseConfig.compilers,
     overrides: { ...hardhatBaseConfig.overrides(name) },
