@@ -112,7 +112,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
      * Current weights should be retrieved via `getNormalizedWeights()`.
      */
     function getGradualWeightUpdateParams()
-        external
+        public
         view
         returns (
             uint256 startTime,
@@ -329,7 +329,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         //cannot swap out uninitialized token
         require(minBalances[swapRequest.tokenOut] == 0, "Uninitialized token");
 
-        // check if it is a swap where an uninitialized token will be swapped INTO the pool
+        // check if uninitialized token will be swapped INTO the pool
         if (minBalances[swapRequest.tokenIn] != 0) {
             /* 
                 check if swap makes token become initialized and do a bunch of things:
@@ -340,11 +340,26 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                 // reset minimumBalance to zero
                 minBalances[swapRequest.tokenIn] = 0;
                 // initiate new weight change
-                (, , , , uint256[] memory newTokenTargetWeights) = getGradualWeightUpdateParams();
+                (
+                    ,
+                    ,
+                    uint256[] memory endWeights,
+                    ,
+                    uint256[] memory newTokenTargetWeights
+                ) = getGradualWeightUpdateParams();
                 (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-                uint256[] memory normalizedWeights = _getNormalizedWeights();
-
-                // TODO: invoke reweighTokens
+                uint256[] memory newEndWeights = IndexPoolUtils.normalizeInterpolated(
+                    endWeights,
+                    newTokenTargetWeights
+                );
+                _startGradualWeightChange(
+                    block.timestamp,
+                    block.timestamp + _calcReweighTime(tokens, endWeights),
+                    endWeights,
+                    newEndWeights,
+                    tokens,
+                    new uint256[](endWeights.length)
+                );
             } else {
                 currentBalanceTokenIn = minBalances[swapRequest.tokenIn];
             }
@@ -381,7 +396,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             normalizedSum = normalizedSum.add(desiredWeights[i]);
         }
 
-        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
+        // _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
         changeTime = ((diff.mulDown(_SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
     }
 
