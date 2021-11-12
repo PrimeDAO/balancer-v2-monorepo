@@ -179,8 +179,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
     function _removeMissedTokens(
         uint256 startTime,
-        uint256 endTime,
-        IERC20[] memory tokens
+        uint256 endTime
     ) internal virtual {
 
         // This is an array of oldTokens which will be trimmed to understand what tokens are removed
@@ -279,8 +278,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
         _removeMissedTokens(
             startTime,
-            endTime,
-            tokens
+            endTime
         );
 
         _startGradualWeightChange(
