@@ -402,10 +402,11 @@ describe('IndexPool', function () {
       const expectedStartWeights = [fp(0.396), fp(0.297), fp(0.297), fp(0.01)];
       const expectedEndWeights = [fp(0.55), fp(0.22), fp(0.22), fp(0.01)];
 
-      let reindexTokens: string[], poolId: string;
+      let reindexTokens: string[], poolId: string, originalTokenAddresses: string[];
 
       sharedBeforeEach('deploy pool', async () => {
         vault = await Vault.create();
+
         const params = {
           tokens: tokens.subset(numberExistingTokens),
           weights: originalWeights,
@@ -414,6 +415,7 @@ describe('IndexPool', function () {
           fromFactory: true,
           vault,
         };
+
         pool = await WeightedPool.create(params);
       });
 
@@ -547,7 +549,7 @@ describe('IndexPool', function () {
         });
       });
 
-      context.only("when the pool's actual token balance exceeds it's minimum balance", () => {
+      context("when the pool's actual token balance exceeds it's minimum balance", () => {
         sharedBeforeEach('swap token into pool', async () => {
           const numberOfSwapsUntilInitialization = 4;
 
@@ -578,11 +580,23 @@ describe('IndexPool', function () {
           expect(minimumBalance).to.equal(0);
         });
 
-        it('initializes a weight change to the new target weight', async () => {
-          const updateParams = await pool.getGradualWeightUpdateParams();
-          console.log(updateParams);
-          // const minimumBalance = await pool.minBalances(reindexTokens[newTokenIndex]);
-          // expect(minimumBalance).to.equal(0);
+        it('sets the final endWeights for all tokens', async () => {
+          const { endWeights } = await pool.getGradualWeightUpdateParams();
+
+          expect(endWeights).to.equalWithError(reindexWeights, 0.0001);
+        });
+
+        it('sets the correct startWeights for all tokens', async () => {
+          const oldStartWeights = expectedEndWeights;
+          const { startWeights: newStartWeights } = await pool.getGradualWeightUpdateParams();
+          expect(newStartWeights).to.equalWithError(oldStartWeights, 0.0001);
+        });
+
+        it('resets the targetWeight for the initialized token to zero', async () => {
+          const expectedNewTokenTargetWeights = new Array(numberExistingTokens + numberNewTokens).fill(fp(0));
+          const { newTokenTargetWeights } = await pool.getGradualWeightUpdateParams();
+
+          expect(newTokenTargetWeights).to.eql(expectedNewTokenTargetWeights);
         });
       });
     });
