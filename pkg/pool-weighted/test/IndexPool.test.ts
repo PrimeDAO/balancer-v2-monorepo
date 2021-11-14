@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { range } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, pct, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
@@ -350,7 +350,7 @@ describe('IndexPool', function () {
       });
     });
 
-    context('when adding one new token', () => {
+    context.only('when adding one new token', () => {
       const numberNewTokens = 1;
       const numberExistingTokens = 3;
       const newTokenIndex = 3;
@@ -361,12 +361,13 @@ describe('IndexPool', function () {
       const standardMinimumBalance = fp(0.01);
       const swapInAmount = fp(0.003);
       const initialTokenAmountsInPool = fp(1);
+      const defaultUninitializedWeight = fp(0.01);
       const minimumBalances = new Array(numberExistingTokens + numberNewTokens).fill(standardMinimumBalance);
 
-      const expectedStartWeights = [fp(0.396), fp(0.297), fp(0.297), fp(0.01)];
-      const expectedEndWeights = [fp(0.55), fp(0.22), fp(0.22), fp(0.01)];
+      const expectedNewStartWeights = [fp(0.396), fp(0.297), fp(0.297), fp(0.01)];
+      const expectedIntermediateEndWeights = [fp(0.55), fp(0.22), fp(0.22), defaultUninitializedWeight];
 
-      let reindexTokens: string[], poolId: string, originalTokenAddresses: string[];
+      let reindexTokens: string[], poolId: string;
 
       sharedBeforeEach('deploy pool', async () => {
         vault = await Vault.create();
@@ -404,16 +405,16 @@ describe('IndexPool', function () {
         expect(tokensFromVault).to.have.members(reindexTokens);
       });
 
-      it('sets the correct startWeights for all four tokens', async () => {
+      it('sets the correct startWeights for all four tokens including the immediate', async () => {
         const { startWeights } = await pool.getGradualWeightUpdateParams();
 
-        expect(startWeights).to.equalWithError(expectedStartWeights, 0.0001);
+        expect(startWeights).to.equalWithError(expectedNewStartWeights, 0.0001);
       });
 
       it('sets the correct endWeights for all four tokens', async () => {
         const { endWeights } = await pool.getGradualWeightUpdateParams();
 
-        expect(endWeights).to.equalWithError(expectedEndWeights, 0.0001);
+        expect(endWeights).to.equalWithError(expectedIntermediateEndWeights, 0.0001);
       });
 
       it('sets the correct rebalancing period', async () => {
@@ -495,14 +496,13 @@ describe('IndexPool', function () {
 
         it('returns the correct amount to the swapper', async () => {
           const defaultFeePercentage = 0.01;
-          const defaultUninitializedWeight = fp(0.01);
           const defaultFeeAmount = pct(swapInAmount, defaultFeePercentage);
           const expectedAmount = Math.floor(
             calcOutGivenIn(
               standardMinimumBalance,
               defaultUninitializedWeight,
               initialTokenAmountsInPool,
-              expectedStartWeights[oldTokenIndex],
+              expectedNewStartWeights[oldTokenIndex],
               swapInAmount.sub(defaultFeeAmount)
             ).toNumber()
           );
@@ -513,10 +513,20 @@ describe('IndexPool', function () {
         });
       });
 
-      context('when the new token becomes initialized', () => {
-        sharedBeforeEach('swap token into pool', async () => {
-          const numberOfSwapsUntilInitialization = 4;
+      context.only('when the new token becomes initialized', () => {
+        const numberOfSwapsUntilInitialization = 4;
+        const weightAdjustmentFactor =
+          (4 * fromFp(swapInAmount).toNumber()) / fromFp(defaultUninitializedWeight).toNumber();
+        // when the new token becomes initialized its weight is immediately adjusted relatively to the amount that its
+        // balacne exceeds its minimumBalance
+        const expectedNewStartWeightsAfterInit = [
+          fp(0.3952),
+          fp(0.2964),
+          fp(0.2964),
+          fp(fromFp(defaultUninitializedWeight).toNumber() * weightAdjustmentFactor),
+        ];
 
+        sharedBeforeEach('swap token into pool', async () => {
           const singleSwap = {
             poolId,
             kind: SwapKind.GivenIn,
@@ -534,6 +544,7 @@ describe('IndexPool', function () {
           const limit = 0; // Minimum amount out
           const deadline = MAX_UINT256;
 
+          // do four swaps => will push new token balance over minimum balance
           for (let i = 0; i < numberOfSwapsUntilInitialization; i++) {
             await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
           }
@@ -552,7 +563,7 @@ describe('IndexPool', function () {
 
         it('sets the correct startWeights for all tokens', async () => {
           const { startWeights: newStartWeights } = await pool.getGradualWeightUpdateParams();
-          expect(newStartWeights).to.equalWithError(expectedStartWeights, 0.0001);
+          expect(newStartWeights).to.equalWithError(expectedNewStartWeightsAfterInit, 0.0001);
         });
 
         it('resets the targetWeight for the initialized token to zero', async () => {
