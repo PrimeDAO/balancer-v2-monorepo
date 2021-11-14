@@ -29,7 +29,7 @@ const getTimeForWeightChange = (weightDifference: number) => {
   return (weightDifference / 1e18) * 86400 * 100;
 };
 
-describe('IndexPool', function () {
+describe.only('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress, randomDude: SignerWithAddress, vault: Vault;
 
   before('setup signers', async () => {
@@ -513,7 +513,7 @@ describe('IndexPool', function () {
         });
       });
 
-      context.only('when the new token becomes initialized', () => {
+      context('when the new token becomes initialized', () => {
         const numberOfSwapsUntilInitialization = 4;
         const weightAdjustmentFactor =
           (4 * fromFp(swapInAmount).toNumber()) / fromFp(defaultUninitializedWeight).toNumber();
@@ -588,7 +588,7 @@ describe('IndexPool', function () {
       const initialTokenAmountsInPool = fp(1);
       const minimumBalances = new Array(numberExistingTokens + numberNewTokens).fill(standardMinimumBalance);
 
-      const expectedStartWeights = [fp(0.392), fp(0.294), fp(0.294), fp(0.01), fp(0.01)];
+      const expectedNewStartWeights = [fp(0.3912), fp(0.2934), fp(0.2934), fp(0.012), fp(0.01)];
       const secondEndWeights = [fp(0.61875), fp(0.12375), fp(0.12375), fp(0.12375), fp(0.01)];
 
       let reindexTokens: string[], poolId: string;
@@ -662,7 +662,7 @@ describe('IndexPool', function () {
 
         it('sets the correct startWeights for all tokens', async () => {
           const { startWeights } = await pool.getGradualWeightUpdateParams();
-          expect(startWeights).to.equalWithError(expectedStartWeights, 0.0001);
+          expect(startWeights).to.equalWithError(expectedNewStartWeights, 0.0001);
         });
 
         it('updates the newTokenTargetWeights', async () => {

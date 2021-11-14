@@ -389,7 +389,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                         minBalances[swapRequest.tokenIn],
                         swapRequest.amount
                     )
-                    : 0;
+                    : _INITIAL_WEIGHT;
             }
         }
 
