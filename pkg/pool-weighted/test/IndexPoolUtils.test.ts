@@ -1127,7 +1127,7 @@ describe('IndexPoolUtils', function () {
     });
   });
 
-  describe.only('#getAdjustedNewStartWeight', () => {
+  describe('#getAdjustedNewStartWeight', () => {
     const minimumBalance = fp(0.01);
     const balanceIn = fp(0.009);
     const swapAmount = fp(0.003);
