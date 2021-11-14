@@ -94,20 +94,17 @@ library IndexPoolUtils {
         returns (uint256)
     {
         bool addPremium = _tokenBalanceBeforeSwap < _minimumBalance;
-
-        // if minimum balance has not been met a slight premium is added to the weight to incentivize swaps
+        // if minimum balance has not been met after swap a slight premium is added to the weight to incentivize swaps
         // the formular for the resulting weight is:
         // 1% * (1 + (minimumBalance - newTokenBalanceIn) / (10 * minimumBalance))
-        // if minimum balance is exceeded the weight is increased relative to the excess amount
-        // the formular for the resulting weight is:
+        // if minimum balance is exceeded through swap the weight is increased relative to the excess amount
+        // the formula for the resulting weight is:
         // 1% * (1 + (minimumBalance - newTokenBalanceIn) / minimumBalance)
-        uint256 scalingFactor = addPremium ? 10 : 1;
+        // uint256 scalingFactor = addPremium ? 10 : 1;
 
-        uint256 balanceDiff = addPremium
-            ? Math.sub(_minimumBalance, _tokenBalanceBeforeSwap)
-            : Math.sub(_tokenBalanceBeforeSwap, _minimumBalance);
+        uint256 balanceDiff = addPremium ? Math.sub(_minimumBalance, _tokenBalanceBeforeSwap) : 0;
 
-        uint256 incentivizationPercentage = FixedPoint.divUp(balanceDiff, (scalingFactor * _minimumBalance));
+        uint256 incentivizationPercentage = FixedPoint.divUp(balanceDiff, (10 * _minimumBalance));
         uint256 incentivizationFactor = Math.add(_HUNDRED_PERCENT, incentivizationPercentage);
 
         return FixedPoint.mulUp(_UNINITIALIZED_WEIGHT, incentivizationFactor);
