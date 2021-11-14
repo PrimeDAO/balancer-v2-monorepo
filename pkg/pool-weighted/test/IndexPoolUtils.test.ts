@@ -1126,4 +1126,21 @@ describe('IndexPoolUtils', function () {
       });
     });
   });
+
+  describe.only('#getAdjustedNewStartWeight', () => {
+    const minimumBalance = fp(0.01);
+    const balanceIn = fp(0.009);
+    const swapAmount = fp(0.003);
+
+    it('returns the correct weight 1.2% ', async () => {
+      const expectedWeight = fp(0.012);
+      const receivedWeight = await indexPoolUtilsInstance.getAdjustedNewStartWeight(
+        balanceIn,
+        minimumBalance,
+        swapAmount
+      );
+
+      expect(receivedWeight).to.equal(expectedWeight);
+    });
+  });
 });

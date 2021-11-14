@@ -19,4 +19,12 @@ contract MockIndexPoolUtils {
     {
         return IndexPoolUtils.getUninitializedTokenWeight(_newTokenBalanceIn, _minimumBalance);
     }
+
+    function getAdjustedNewStartWeight(
+        uint256 _balanceIn,
+        uint256 _minimumBalance,
+        uint256 _amount
+    ) public pure returns (uint256) {
+        return IndexPoolUtils.getAdjustedNewStartWeight(_balanceIn, _minimumBalance, _amount);
+    }
 }
