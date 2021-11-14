@@ -342,62 +342,81 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                 3. set targetWeight of initialized token to zero
             */
             if (currentBalanceTokenIn.add(swapRequest.amount) >= minBalances[swapRequest.tokenIn]) {
-                currentBalanceTokenIn = minBalances[swapRequest.tokenIn];
-                /*
-                 1. set minimumBalance for initialized token to zero
-                */
-                minBalances[swapRequest.tokenIn] = 0;
-                // initiate weight change
-                (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-                // 1. get original reindex values (works!)
-                (, , uint256[] memory endWeights, , uint256[] memory finalWeights) = getGradualWeightUpdateParams();
-                uint256[] memory originalReindexTargets = IndexPoolUtils.normalizeInterpolated(
-                    endWeights,
-                    finalWeights
-                );
-                /*
-                 2. initiate new weight change this time with the final target weights (from reindex call)
-                 3. the final target weights are updated within _startGradualWeightChange for gas saving
-                */
-                // create fixedWeights (e.g. 0/0/0/0/1)
-                uint256[] memory fixedWeights = new uint256[](tokens.length);
-                uint256[] memory newTokenTargetWeights = new uint256[](tokens.length);
-                for (uint256 i = 0; i < tokens.length; i++) {
-                    bytes32 tokenState = _tokenState[tokens[i]];
-                    // get final weights for reindex tokens as given per reindex call
-                    uint256 finalTokenTargetWeight = tokenState
-                        .decodeUint32(_NEW_TOKEN_TARGET_WEIGHT_OFFSET)
-                        .uncompress32();
-                    if (finalTokenTargetWeight != 0) {
-                        // it's an uninitialized token
-
-                        // if its the to-be-initialized token, set its fixed weight to zero
-                        // else its a still-not-initialized token => set its fixed weight to 1
-                        fixedWeights[i] = tokens[i] == swapRequest.tokenIn ? 0 : _INITIAL_WEIGHT;
-                        newTokenTargetWeights[i] = tokens[i] == swapRequest.tokenIn ? 0 : finalTokenTargetWeight;
-                    }
-                }
-
-                // finally getting the endWeights for the new weight change
-                uint256[] memory newEndWeights = IndexPoolUtils.normalizeInterpolated(
-                    originalReindexTargets,
-                    fixedWeights
-                );
-
-                _startGradualWeightChange(
-                    block.timestamp,
-                    block.timestamp + _calcReweighTime(tokens, newEndWeights),
-                    _getNormalizedWeights(),
-                    newEndWeights,
-                    tokens,
-                    newTokenTargetWeights
-                );
+                currentBalanceTokenIn = _initializeToken(currentBalanceTokenIn, swapRequest);
             } else {
                 currentBalanceTokenIn = minBalances[swapRequest.tokenIn];
             }
         }
 
         return super.onSwap(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+    }
+
+    function _initializeToken(uint256 currentBalanceTokenIn, SwapRequest memory swapRequest) private returns (uint256) {
+        uint256 actualBalanceIn = currentBalanceTokenIn;
+        currentBalanceTokenIn = minBalances[swapRequest.tokenIn];
+        /*
+            1. set minimumBalance for initialized token to zero
+        */
+        minBalances[swapRequest.tokenIn] = 0;
+
+        /*
+            2. initiate new weight change this time with the final target weights (from reindex call)
+            3. the final target weights are updated within _startGradualWeightChange for gas saving
+        */
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        // 1. get original reindex values
+        uint256[] memory originalReindexTargets;
+        {
+            (, , uint256[] memory endWeights, , uint256[] memory finalWeights) = getGradualWeightUpdateParams();
+            originalReindexTargets = IndexPoolUtils.normalizeInterpolated(endWeights, finalWeights);
+        }
+
+        // create fixedWeights (e.g. 0/0/0/0/1) for startWeights & endWeights
+        uint256[] memory fixedEndWeights = new uint256[](tokens.length);
+        uint256[] memory fixedStartWeights = new uint256[](tokens.length);
+        uint256[] memory newTokenTargetWeights = new uint256[](tokens.length);
+
+        {
+            for (uint256 i = 0; i < tokens.length; i++) {
+                bytes32 tokenState = _tokenState[tokens[i]];
+                // get final weights for reindex tokens as given per reindex call
+                uint256 finalTokenTargetWeight = tokenState
+                    .decodeUint32(_NEW_TOKEN_TARGET_WEIGHT_OFFSET)
+                    .uncompress32();
+                if (finalTokenTargetWeight != 0) {
+                    // it's an uninitialized token
+
+                    // if its the to-be-initialized token, use as fixed weight zero
+                    // else its a still-not-initialized token => set its fixed weight to 1%
+                    fixedEndWeights[i] = tokens[i] == swapRequest.tokenIn ? 0 : _INITIAL_WEIGHT;
+                    newTokenTargetWeights[i] = tokens[i] == swapRequest.tokenIn ? 0 : finalTokenTargetWeight;
+
+                    // if its the to-be-initialized token its new start weight needs to immediately be adjusted
+                    // by the amount that its vault balance exceeds its minimumBalance (weightAdjustmentFactor)
+                    // else its a still-not-initialized token => set its fixed start weight to 1%
+                    fixedStartWeights[i] = tokens[i] == swapRequest.tokenIn
+                        ? IndexPoolUtils.getAdjustedNewStartWeight(
+                            actualBalanceIn,
+                            currentBalanceTokenIn,
+                            swapRequest.amount
+                        )
+                        : 0;
+                }
+            }
+        }
+
+        uint256[] memory nextEndWeights = IndexPoolUtils.normalizeInterpolated(originalReindexTargets, fixedEndWeights);
+
+        _startGradualWeightChange(
+            block.timestamp,
+            block.timestamp + _calcReweighTime(tokens, nextEndWeights),
+            IndexPoolUtils.normalizeInterpolated(_getNormalizedWeights(), fixedStartWeights),
+            nextEndWeights,
+            tokens,
+            newTokenTargetWeights
+        );
+
+        return currentBalanceTokenIn;
     }
 
     function _calcReweighTime(IERC20[] memory tokens, uint256[] memory desiredWeights)

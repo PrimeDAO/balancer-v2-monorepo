@@ -375,7 +375,7 @@ describe('IndexPool', function () {
       });
     });
 
-    context.only('when adding one new token', () => {
+    context('when adding one new token', () => {
       const numberNewTokens = 1;
       const numberExistingTokens = 3;
       const newTokenIndex = 3;
@@ -543,7 +543,7 @@ describe('IndexPool', function () {
         const weightAdjustmentFactor =
           (4 * fromFp(swapInAmount).toNumber()) / fromFp(defaultUninitializedWeight).toNumber();
         // when the new token becomes initialized its weight is immediately adjusted relatively to the amount that its
-        // balacne exceeds its minimumBalance
+        // balance exceeds its minimumBalance
         const expectedNewStartWeightsAfterInit = [
           fp(0.3952),
           fp(0.2964),
