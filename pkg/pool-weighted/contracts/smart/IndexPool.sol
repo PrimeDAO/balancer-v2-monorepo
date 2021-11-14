@@ -28,6 +28,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
     using WeightCompression for uint256;
+    using IndexPoolUtils for *;
 
     uint256 private constant _MAX_TOKENS = 50;
     uint256 private constant _INITIAL_WEIGHT = 10**16;
@@ -179,25 +180,27 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     function _removeMissedTokens(
         uint256 startTime,
         uint256 endTime
-    ) internal virtual {
+    ) internal virtual returns(uint256 weightDiff){
 
         // This is an array of oldTokens which will be trimmed to understand what tokens are removed
         (IERC20[] memory oldTokens, , ) = getVault().getPoolTokens(getPoolId());
         require(oldTokens.length < 50);
-
         bytes32 tokenState;
         for (uint256 i = 0; i < oldTokens.length; i++){
             tokenState = _tokenState[IERC20(oldTokens[i])];
             uint256 remove_flag = tokenState.decodeUint5(_REMOVE_FLAG_OFFSET);
             // checking if token was listed in the array of new tokens
             if(remove_flag != _SAVE_FLAG){
+                uint256 currentWeight = _getNormalizedWeight(IERC20(oldTokens[i]));
                 // setting desired weight to 1 %, current weight to current %, and adding REMOVE_FLAG
                 tokenState = tokenState
-                    .insertUint64(_getNormalizedWeight(IERC20(oldTokens[i])).compress64(), _START_WEIGHT_OFFSET)
+                    .insertUint64(currentWeight.compress64(), _START_WEIGHT_OFFSET)
                     .insertUint32((FixedPoint.ONE).compress32(), _END_WEIGHT_OFFSET)
                     .insertUint5(uint256(18).sub(ERC20(address(oldTokens[i])).decimals()), _DECIMAL_DIFF_OFFSET)
                     .insertUint5(_REMOVE_FLAG, _REMOVE_FLAG_OFFSET);
-
+                if(weightDiff < currentWeight - FixedPoint.ONE){
+                    weightDiff = currentWeight - FixedPoint.ONE;
+                }
                 // write new token state to storage
                 _tokenState[IERC20(oldTokens[i])] = tokenState;
 
@@ -275,19 +278,30 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
-        _removeMissedTokens(
+        uint256 weightDiff = _removeMissedTokens(
             startTime,
             endTime
         );
-
-        _startGradualWeightChange(
+        uint256 timeDiff = ((weightDiff.mulDown(IndexPoolUtils._SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
+        if(timeDiff > endTime - startTime){
+            _startGradualWeightChange(
             startTime,
-            endTime,
+            startTime + timeDiff,
             _getNormalizedWeights(),
             endWeights,
             tokens,
             new uint256[](tokens.length)
-        );
+            );
+        } else {
+            _startGradualWeightChange(
+                startTime,
+                endTime,
+                _getNormalizedWeights(),
+                endWeights,
+                tokens,
+                new uint256[](tokens.length)
+            );
+        }
     }
 
 //    function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {

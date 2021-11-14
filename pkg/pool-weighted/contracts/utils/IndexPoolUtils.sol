@@ -25,7 +25,7 @@ library IndexPoolUtils {
     uint256 private constant _END_WEIGHT_OFFSET = 64;
 
 
-    uint256 private constant _SECONDS_IN_A_DAY = 86400;
+    uint256 public constant _SECONDS_IN_A_DAY = 86400;
 
     /// @dev Scales baseWeights up/down so that resulting weights array is normalized.
     /// @param _baseWeights Array with weights of tokens. Those that are non-zero need to be scaled.

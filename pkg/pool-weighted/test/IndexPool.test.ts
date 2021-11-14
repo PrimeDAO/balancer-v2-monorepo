@@ -429,7 +429,7 @@ describe('IndexPool', function () {
       sharedBeforeEach('call reindexTokens function', async () => {
         reindexTokens = allTokens.subset(numberExistingTokens + numberNewTokens).tokens.map((token) => token.address);
         poolId = await pool.getPoolId();
-        await pool.reindexTokens(controller, reindexTokens, reindexWeights, minimumBalances);
+        await pool.reindexTokens(owner, reindexTokens, reindexWeights, minimumBalances);
       });
 
       it('adds the new token to the vault registry', async () => {
