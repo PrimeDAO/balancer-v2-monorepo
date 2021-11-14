@@ -112,4 +112,22 @@ library IndexPoolUtils {
 
         return FixedPoint.mulUp(_UNINITIALIZED_WEIGHT, incentivizationFactor);
     }
+
+    /// @dev When token becomes initialized its weight is immediately adjusted relative to the amount by
+    /// which its balance axceeds its minBalance
+    /// @param _balanceIn Amount of uninitialized token in pool (before the swap)
+    /// @param _minimumBalance Minimum balance set for the uninitialized token (= initialization threshold)
+    /// @param _amount Minimum balance set for the uninitialized token (= initialization threshold)
+    /// @return Weight to which will be the start weight of the next weight update for initialized token.
+    function getAdjustedNewStartWeight(
+        uint256 _balanceIn,
+        uint256 _minimumBalance,
+        uint256 _amount
+    ) internal pure returns (uint256) {
+        return
+            FixedPoint.divDown(
+                FixedPoint.mulDown(FixedPoint.add(_balanceIn, _amount), _UNINITIALIZED_WEIGHT),
+                _minimumBalance
+            );
+    }
 }
