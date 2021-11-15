@@ -76,3 +76,22 @@ export const setupAdjustTokens = (numWeights: number) => {
 
   return { baseWeights, fixedWeights };
 };
+
+// generates random baseWeights and fixedWeights for the case where one or two new tokens are added
+export const setupNewTokens = (numWeights: number, numNewTokens: number) => {
+  const baseWeights = getRandomBaseWeights(numWeights);
+
+  const numberNewTokens = getIntegerBetween(1, numNewTokens);
+  const fixedWeights = new Array(baseWeights.length).fill(0);
+  const initialWeight = 0.01;
+  for (let i = 0; i < numberNewTokens; i++) {
+    fixedWeights.push(initialWeight);
+  }
+  const numberAddedTokens = fixedWeights.length - baseWeights.length;
+
+  for (let i = 0; i < numberAddedTokens; i++) {
+    baseWeights.push(0);
+  }
+
+  return { baseWeights, fixedWeights };
+};
