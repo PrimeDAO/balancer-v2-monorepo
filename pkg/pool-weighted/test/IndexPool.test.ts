@@ -440,8 +440,8 @@ describe.only('IndexPool', function () {
 
         expectEvent.inReceiptWithError(receipt, 'WeightChange', {
           tokens: reindexTokens,
-          startWeights: expectedStartWeights,
-          endWeights: expectedEndWeights,
+          startWeights: expectedNewStartWeights,
+          endWeights: expectedIntermediateEndWeights,
           finalTargetWeights: expectedNewTokenTargetWeights,
         });
       });
@@ -546,7 +546,11 @@ describe.only('IndexPool', function () {
           fp(fromFp(defaultUninitializedWeight).toNumber() * weightAdjustmentFactor),
         ];
 
-        sharedBeforeEach('swap token into pool', async () => {
+        sharedBeforeEach('reindex', async () => {
+          await pool.reindexTokens(controller, reindexTokens, reindexWeights, minimumBalances);
+        });
+
+        it('resets the minimum balance for the to-be-intialized token to zero', async () => {
           const singleSwap = {
             poolId,
             kind: SwapKind.GivenIn,
@@ -568,29 +572,46 @@ describe.only('IndexPool', function () {
           for (let i = 0; i < numberOfSwapsUntilInitialization; i++) {
             await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
           }
-        });
 
-        it('resets the minimum balance for the to-be-intialized token to zero', async () => {
           const minimumBalance = await pool.minBalances(reindexTokens[newTokenIndex]);
           expect(minimumBalance).to.equal(0);
         });
 
-        it('sets the final endWeights for all tokens', async () => {
-          const { endWeights } = await pool.getGradualWeightUpdateParams();
-
-          expect(endWeights).to.equalWithError(reindexWeights, 0.0001);
-        });
-
-        it('sets the correct startWeights for all tokens', async () => {
-          const { startWeights: newStartWeights } = await pool.getGradualWeightUpdateParams();
-          expect(newStartWeights).to.equalWithError(expectedNewStartWeightsAfterInit, 0.0001);
-        });
-
-        it('resets the targetWeight for the initialized token to zero', async () => {
+        it('emits an event that contains the correct state change params', async () => {
           const expectedNewTokenTargetWeights = new Array(numberExistingTokens + numberNewTokens).fill(fp(0));
-          const { newTokenTargetWeights } = await pool.getGradualWeightUpdateParams();
 
-          expect(newTokenTargetWeights).to.eql(expectedNewTokenTargetWeights);
+          const singleSwap = {
+            poolId,
+            kind: SwapKind.GivenIn,
+            assetIn: reindexTokens[newTokenIndex],
+            assetOut: reindexTokens[0],
+            amount: swapInAmount,
+            userData: '0x',
+          };
+          const funds = {
+            sender: owner.address,
+            fromInternalBalance: false,
+            recipient: randomDude.address,
+            toInternalBalance: false,
+          };
+          const limit = 0; // Minimum amount out
+          const deadline = MAX_UINT256;
+
+          // do four swaps => will push new token balance over minimum balance
+          for (let i = 0; i < numberOfSwapsUntilInitialization - 1; i++) {
+            await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+          }
+
+          const tx = await pool.reindexTokens(controller, reindexTokens, reindexWeights, minimumBalances);
+
+          const receipt = await tx.wait();
+
+          expectEvent.inReceiptWithError(receipt, 'WeightChange', {
+            tokens: reindexTokens,
+            startWeights: expectedNewStartWeights,
+            endWeights: expectedIntermediateEndWeights,
+            finalTargetWeights: expectedNewTokenTargetWeights,
+          });
         });
       });
     });
