@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
+// import { BigNumber } from 'ethers';
 import { range } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { fp, pct, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
@@ -13,22 +13,22 @@ import * as expectEvent from '../../../pvt/helpers/src/test/expectEvent';
 import { calcOutGivenIn } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
 
-const calculateMaxWeightDifference = (oldWeights: BigNumber[], newWeights: BigNumber[]) => {
-  let maxWeightDifference = 0;
-  for (let i = 0; i < newWeights.length; i++) {
-    if (Math.abs(Number(newWeights[i]) - Number(oldWeights[i])) > maxWeightDifference) {
-      maxWeightDifference = Math.abs(Number(newWeights[i]) - Number(oldWeights[i]));
-    }
-  }
-  return maxWeightDifference;
-};
+// const calculateMaxWeightDifference = (oldWeights: BigNumber[], newWeights: BigNumber[]) => {
+//   let maxWeightDifference = 0;
+//   for (let i = 0; i < newWeights.length; i++) {
+//     if (Math.abs(Number(newWeights[i]) - Number(oldWeights[i])) > maxWeightDifference) {
+//       maxWeightDifference = Math.abs(Number(newWeights[i]) - Number(oldWeights[i]));
+//     }
+//   }
+//   return maxWeightDifference;
+// };
 
-const getTimeForWeightChange = (weightDifference: number) => {
-  // 1e18 is 100%, we need to calculate on how much percent the weight changes first,
-  // then we can understand how much time do we need by multiplying amount of percents o amount of seconds per day
-  // (1% change in a day at max rate)
-  return (weightDifference / 1e18) * 86400 * 100;
-};
+// const getTimeForWeightChange = (weightDifference: number) => {
+//   // 1e18 is 100%, we need to calculate on how much percent the weight changes first,
+//   // then we can understand how much time do we need by multiplying amount of percents o amount of seconds per day
+//   // (1% change in a day at max rate)
+//   return (weightDifference / 1e18) * 86400 * 100;
+// };
 
 describe.only('IndexPool', function () {
   let owner: SignerWithAddress,
