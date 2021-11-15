@@ -177,13 +177,13 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         return secondsElapsed.divDown(totalSeconds);
     }
 
-    function _removeMissedTokens(
-        uint256 startTime,
-        uint256 endTime
-    ) internal virtual returns(uint256 weightDiff){
+    function _removeMissedTokens() internal returns(uint256 weightDiff, IERC20[] memory, uint256 length){
 
         // This is an array of oldTokens which will be trimmed to understand what tokens are removed
         (IERC20[] memory oldTokens, , ) = getVault().getPoolTokens(getPoolId());
+        weightDiff = 0;
+        IERC20[] memory tokens = new IERC20[](oldTokens.length);
+        uint256 removedTokensLength = 0;
         require(oldTokens.length < 50);
         bytes32 tokenState;
         for (uint256 i = 0; i < oldTokens.length; i++){
@@ -195,7 +195,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                 // setting desired weight to 1 %, current weight to current %, and adding REMOVE_FLAG
                 tokenState = tokenState
                     .insertUint64(currentWeight.compress64(), _START_WEIGHT_OFFSET)
-                    .insertUint32((FixedPoint.ONE).compress32(), _END_WEIGHT_OFFSET)
+                    .insertUint32((FixedPoint.ONE/100).compress32(), _END_WEIGHT_OFFSET)
                     .insertUint5(uint256(18).sub(ERC20(address(oldTokens[i])).decimals()), _DECIMAL_DIFF_OFFSET)
                     .insertUint5(_REMOVE_FLAG, _REMOVE_FLAG_OFFSET);
                 if(weightDiff < currentWeight - FixedPoint.ONE){
@@ -203,11 +203,13 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                 }
                 // write new token state to storage
                 _tokenState[IERC20(oldTokens[i])] = tokenState;
-
+                tokens[removedTokensLength] = (IERC20(oldTokens[i]));
+                removedTokensLength++;
             } else {
                 _tokenState[IERC20(oldTokens[i])] =tokenState.insertUint5(_NORMAL_FLAG, _REMOVE_FLAG_OFFSET);
             }
         }
+        return (weightDiff, tokens, removedTokensLength);
     }
 
     /**
@@ -225,15 +227,6 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         uint256 normalizedSum = 0;
         bytes32 tokenState;
 
-        uint256 weightDiff = _removeMissedTokens(
-            startTime,
-            endTime
-        );
-        uint256 timeDiff = ((weightDiff.mulDown(IndexPoolUtils._SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
-        uint256 actualEndTime = endTime;
-        if(timeDiff > endTime - startTime){
-            actualEndTime = startTime + timeDiff;
-        }
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
@@ -260,7 +253,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
         _setMiscData(
-            _getMiscData().insertUint32(startTime, _START_TIME_OFFSET).insertUint32(actualEndTime, _END_TIME_OFFSET)
+            _getMiscData().insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET)
         );
         //        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
 
@@ -354,13 +347,25 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                 _tokenState[IERC20(tokens[i])] = currentTokenState.insertUint5(_SAVE_FLAG, _REMOVE_FLAG_OFFSET);
             }
         }
+
         _registerNewTokensWithVault(newTokensContainer, newTokenCounter);
+
+        uint256 changeTimeDiff = IndexPoolUtils._calcReweighTime(tokens, desiredWeights, _getNormalizedWeights());
+        {
+            (uint256 weightDiff, IERC20[] memory removedTokens, uint256 removedTokensLength) = _removeMissedTokens();
+            if(removedTokensLength > 0){
+//                uint256 removeTimeDiff = ((weightDiff.mulDown(IndexPoolUtils._SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
+//                if(removeTimeDiff > changeTimeDiff){
+//                    changeTimeDiff = removeTimeDiff;
+//                }
+            }
+        }
         //setting the initial
         _startGradualWeightChange(
             block.timestamp,
             // !! here we make a simplifaction by calculating the time based
             // just looking at the initial startWeights vs finalEndweights
-            block.timestamp + IndexPoolUtils._calcReweighTime(tokens, desiredWeights, _getNormalizedWeights()),
+            block.timestamp + changeTimeDiff,
             // here we get the starting weights for the new weight change, that should be the weights
             // as applicable immediately after the first weight change
             // e.g. 49.5/49.5/1 after a tokens has been added to a 50/50 pool

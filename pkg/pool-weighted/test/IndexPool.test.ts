@@ -614,36 +614,35 @@ describe('IndexPool', function () {
         expect(endWeights).to.equalWithError(expectedEndWeights, 0.0001);
       });
 
-      // it('sets the correct rebalancing period', async () => {
-      //   const maxWeightDifference = calculateMaxWeightDifference(reindexWeights, [...originalWeights, fp(0)]);
-      //   const time = getTimeForWeightChange(maxWeightDifference);
-      //   const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
-      //
-      //   expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
-      // });
-      //
-      // it('sets the correct minimum balance for the new token', async () => {
-      //   const minimumBalance = await pool.minBalances(reindexTokens[reindexTokens.length - 1]);
-      //
-      //   expect(minimumBalance).to.equalWithError(standardMinimumBalance, 0.0001);
-      // });
-      //
-      // it('does not set a minimum balance for existing tokens', async () => {
-      //   const minBalFirstToken = await pool.minBalances(reindexTokens[0]);
-      //   const minBalSecondToken = await pool.minBalances(reindexTokens[1]);
-      //   const minBalThirdToken = await pool.minBalances(reindexTokens[2]);
-      //
-      //   expect(minBalFirstToken).to.equal(0);
-      //   expect(minBalSecondToken).to.equal(0);
-      //   expect(minBalThirdToken).to.equal(0);
-      // });
-      //
-      // it('stores the final target weight for the new token', async () => {
-      //   const expectedNewTokenTargetWeights = [fp(0), fp(0), fp(0), newTokenTargetWeight];
-      //   const { newTokenTargetWeights } = await pool.getGradualWeightUpdateParams();
-      //
-      //   expect(newTokenTargetWeights).to.equalWithError(expectedNewTokenTargetWeights, 0.0001);
-      // });
+      it('sets the correct rebalancing period', async () => {
+        const maxWeightDifference = calculateMaxWeightDifference(reindexWeights.concat([fp(0.01)]), [
+          ...originalWeights,
+          fp(0),
+        ]);
+        const time = getTimeForWeightChange(maxWeightDifference);
+        const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
+
+        expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
+      });
+
+      it('does not set a minimum balance for existing tokens', async () => {
+        const minBalFirstToken = await pool.minBalances(reindexTokens[0]);
+        const minBalSecondToken = await pool.minBalances(reindexTokens[1]);
+        const minBalThirdToken = await pool.minBalances(reindexTokens[2]);
+        const minBalFourthToken = await pool.minBalances(reindexTokens[3]);
+
+        expect(minBalFirstToken).to.equal(0);
+        expect(minBalSecondToken).to.equal(0);
+        expect(minBalThirdToken).to.equal(0);
+        expect(minBalFourthToken).to.equal(0);
+      });
+
+      it('stores the final target weight for the new token', async () => {
+        const expectedNewTokenTargetWeights = [fp(0.5), fp(0), fp(0), newTokenTargetWeight];
+        const { newTokenTargetWeights } = await pool.getGradualWeightUpdateParams();
+
+        expect(newTokenTargetWeights).to.equalWithError(expectedNewTokenTargetWeights, 0.0001);
+      });
       //
       // context('when attempting to swap new token out of pool', () => {
       //   it('reverts "Uninitialized token"', async () => {

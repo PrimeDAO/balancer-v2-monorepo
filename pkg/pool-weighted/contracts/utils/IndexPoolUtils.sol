@@ -156,7 +156,6 @@ library IndexPoolUtils {
     {
         uint256 diff = 0;
         uint256 numTokens = tokens.length;
-
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; i++) {
 
