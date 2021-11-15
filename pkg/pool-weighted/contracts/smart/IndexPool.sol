@@ -264,19 +264,28 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
     /// @param currentBalanceTokenIn Vault balance of token that is swapped into the pool.
     function _setOriginalTargetWeight(uint256 currentBalanceTokenIn, SwapRequest memory swapRequest) private {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        uint256 numTokens = tokens.length;
         // get original reindex values by interpolating back
         uint256[] memory originalReindexTargets;
         {
-            (, , uint256[] memory endWeights, , uint256[] memory finalWeights) = getGradualWeightUpdateParams();
-            originalReindexTargets = IndexPoolUtils.normalizeInterpolated(endWeights, finalWeights);
+            uint256[] memory endWeights = new uint256[](numTokens);
+            uint256[] memory newTokenTargetWeights = new uint256[](numTokens);
+
+            for (uint256 i = 0; i < numTokens; i++) {
+                bytes32 tokenState = _tokenState[tokens[i]];
+                endWeights[i] = tokenState.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+                newTokenTargetWeights[i] = tokenState.decodeUint32(_NEW_TOKEN_TARGET_WEIGHT_OFFSET).uncompress32();
+            }
+
+            originalReindexTargets = IndexPoolUtils.normalizeInterpolated(endWeights, newTokenTargetWeights);
         }
 
         // create fixedWeights (e.g. 0/0/0/0/1) for startWeights & endWeights
-        uint256[] memory fixedEndWeights = new uint256[](tokens.length);
-        uint256[] memory fixedStartWeights = new uint256[](tokens.length);
-        uint256[] memory newTokenTargetWeights = new uint256[](tokens.length);
+        uint256[] memory fixedEndWeights = new uint256[](numTokens);
+        uint256[] memory fixedStartWeights = new uint256[](numTokens);
+        uint256[] memory newTokenTargetWeights = new uint256[](numTokens);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < numTokens; i++) {
             bytes32 tokenState = _tokenState[tokens[i]];
             // get final weights for reindex tokens as given per reindex call
             uint256 finalTokenTargetWeight = tokenState.decodeUint32(_NEW_TOKEN_TARGET_WEIGHT_OFFSET).uncompress32();
