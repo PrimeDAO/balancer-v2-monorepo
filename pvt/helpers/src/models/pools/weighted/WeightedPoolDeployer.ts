@@ -140,6 +140,7 @@ export default {
             },
           ],
           from,
+          libraries: { IndexPoolUtils: await (await deploy('IndexPoolUtils')).address },
         });
         break;
       }
@@ -244,6 +245,7 @@ export default {
         const factory = await deploy('v2-pool-weighted/IndexPoolFactory', {
           args: [vault.address],
           from,
+          libraries: { IndexPoolUtils: await (await deploy('IndexPoolUtils')).address },
         });
         const tx = await factory.create(
           NAME,

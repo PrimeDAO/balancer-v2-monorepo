@@ -17,7 +17,7 @@ library IndexPoolUtils {
     /// @param _fixedWeights Array with weights of tokens. Those that are non-zero are fixed.
     /// @return Array with scaled and fixed weights of tokens. Should add up to one.
     function normalizeInterpolated(uint256[] memory _baseWeights, uint256[] memory _fixedWeights)
-        internal
+        external
         pure
         returns (uint256[] memory)
     {
@@ -89,7 +89,7 @@ library IndexPoolUtils {
     /// @param _minimumBalance Minimum balance set for the uninitialized token (= initialization threshold)
     /// @return Weight to be used to calculate the price of an uninitalized token.
     function getUninitializedTokenWeight(uint256 _tokenBalanceBeforeSwap, uint256 _minimumBalance)
-        internal
+        external
         pure
         returns (uint256)
     {
