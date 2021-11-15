@@ -139,6 +139,7 @@ export default {
               controller: TypesConverter.toAddress(owner),
             },
           ],
+          libraries: { IndexPoolUtils: await (await deploy('IndexPoolUtils')).address },
           from,
         });
         break;
@@ -243,6 +244,7 @@ export default {
       case WeightedPoolType.INDEX_POOL: {
         const factory = await deploy('v2-pool-weighted/IndexPoolFactory', {
           args: [vault.address],
+          libraries: { IndexPoolUtils: await (await deploy('IndexPoolUtils')).address },
           from,
         });
         const tx = await factory.create(
