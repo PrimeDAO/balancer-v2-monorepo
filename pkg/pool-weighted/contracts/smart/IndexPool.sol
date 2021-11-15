@@ -146,7 +146,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
                 .insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET)
                 .insertUint5(uint256(18).sub(ERC20(address(tokens[i])).decimals()), _DECIMAL_DIFF_OFFSET);
 
-            // setting the final target weight here allowss us to save gas by writing to storage only once per token
+            // setting the final target weight here allows us to save gas by writing to storage only once per token
             if (newTokenTargetWeights[i] != 0) {
                 tokenState = tokenState.insertUint32(
                     newTokenTargetWeights[i].compress32(),
@@ -189,46 +189,23 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
     ) external authenticate {
         InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length, minimumBalances.length);
 
-        /*
-            assemble params for IndexPoolUtils._normalizeInterpolated:
-        */
-        // the initial weights in the pool (here a new token has a weight of zero)
-        uint256[] memory baseWeights = new uint256[](tokens.length);
-        // the weights that are fixed and that the other tokens need to be adjusted by
-        uint256[] memory fixedWeights = new uint256[](tokens.length);
-        // we need to store the final desired weight of a new tokensince initially it will be set to 1%
-        uint256[] memory newTokenTargetWeights = new uint256[](tokens.length);
+        (
+            uint256[] memory fixedWeights,
+            uint256[] memory newTokenTargetWeights,
+            IERC20[] memory existingTokens,
+            IERC20[] memory newTokens
+        ) = IndexPoolUtils.assembleReindexParams(tokens, desiredWeights, minimumBalances, _tokenState, minBalances);
 
-        /*
-            this is some mambojambo to get an array that only contains the
-            addresses of the new tokens
-        */
-        IERC20[] memory newTokensContainer = new IERC20[](tokens.length);
-        uint8 newTokenCounter;
+        getVault().registerTokens(getPoolId(), newTokens, new address[](newTokens.length));
 
-        for (uint8 i = 0; i < tokens.length; i++) {
-            _require(minimumBalances[i] != 0, Errors.INVALID_ZERO_MINIMUM_BALANCE);
-            bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
+        uint256[] memory baseWeights = new uint256[](existingTokens.length);
 
-            // check if token is new token by checking if no startTime is set
-            if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) == 0) {
-                // currentToken is new token
-                // add to fixedWeights (memory)
-                fixedWeights[i] = _INITIAL_WEIGHT;
-                // mark token to be new to allow for additional logic in _startGradualWeightChange (for gas savings)
-                newTokenTargetWeights[i] = desiredWeights[i];
-                // store minimumBalance (state) also serves as initialization flag
-                minBalances[tokens[i]] = minimumBalances[i];
-                // add new token to container to be stored further down
-                newTokensContainer[newTokenCounter] = tokens[i];
-                // increment counter for new tokens (memory)
-                newTokenCounter++;
-            } else {
-                // currentToken is existing (not new) token
-                baseWeights[i] = _getNormalizedWeight(IERC20(tokens[i]));
+        for (uint8 i; i < existingTokens.length; i++) {
+            if (address(existingTokens[i]) != address(0)) {
+                baseWeights[i] = _getNormalizedWeight(existingTokens[i]);
             }
         }
-        _registerNewTokensWithVault(newTokensContainer, newTokenCounter);
+
         //setting the initial
         _startGradualWeightChange(
             block.timestamp,
@@ -359,15 +336,6 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
         }
 
         changeTime = ((diff.mulDown(_SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
-    }
-
-    function _registerNewTokensWithVault(IERC20[] memory newTokensContainer, uint8 amountNewTokens) internal {
-        IERC20[] memory newTokens = new IERC20[](amountNewTokens);
-
-        for (uint8 i = 0; i < amountNewTokens; i++) {
-            newTokens[i] = newTokensContainer[i];
-        }
-        getVault().registerTokens(getPoolId(), newTokens, new address[](newTokens.length));
     }
 
     function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private pure returns (uint256 finalWeight) {

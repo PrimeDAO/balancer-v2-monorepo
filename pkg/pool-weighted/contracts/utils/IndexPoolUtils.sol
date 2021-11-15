@@ -3,14 +3,27 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+
+import "hardhat/console.sol";
 
 library IndexPoolUtils {
     using FixedPoint for uint256;
     using Math for uint256;
+    using WordCodec for bytes32;
 
     uint256 internal constant _PRECISION = 18;
     uint256 internal constant _HUNDRED_PERCENT = 10**_PRECISION;
     uint256 internal constant _UNINITIALIZED_WEIGHT = _HUNDRED_PERCENT / 100;
+    uint256 private constant _INITIAL_WEIGHT = 10**16;
+
+    // Offsets for data elements in _tokenState
+    uint256 private constant _START_WEIGHT_OFFSET = 0;
+    uint256 private constant _END_WEIGHT_OFFSET = 64;
+    uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
+    uint256 private constant _UNINITIALIZED_OFFSET = 101;
+    uint256 private constant _NEW_TOKEN_TARGET_WEIGHT_OFFSET = 106;
 
     /// @dev Scales baseWeights up/down so that resulting weights array is normalized.
     /// @param _baseWeights Array with weights of tokens. Those that are non-zero need to be scaled.
@@ -111,6 +124,69 @@ library IndexPoolUtils {
         uint256 incentivizationFactor = Math.add(_HUNDRED_PERCENT, incentivizationPercentage);
 
         return FixedPoint.mulUp(_UNINITIALIZED_WEIGHT, incentivizationFactor);
+    }
+
+    function assembleReindexParams(
+        IERC20[] memory tokens,
+        uint256[] memory desiredWeights,
+        uint256[] memory minimumBalances,
+        mapping(IERC20 => bytes32) storage tokenState,
+        mapping(IERC20 => uint256) storage minBalances
+    )
+        external
+        returns (
+            uint256[] memory fixedWeights,
+            uint256[] memory newTokenTargetWeights,
+            IERC20[] memory existingTokens,
+            IERC20[] memory newTokens
+        )
+    {
+        /*
+            assemble params for IndexPoolUtils._normalizeInterpolated:
+        */
+
+        // the weights that are fixed and that the other tokens need to be adjusted by
+        fixedWeights = new uint256[](tokens.length);
+        // we need to store the final desired weight of a new tokensince initially it will be set to 1%
+        newTokenTargetWeights = new uint256[](tokens.length);
+
+        existingTokens = new IERC20[](tokens.length);
+
+        /*
+            this is some mambojambo to get an array that only contains the
+            addresses of the new tokens
+        */
+        IERC20[] memory newTokensContainer = new IERC20[](tokens.length);
+        uint8 newTokenCounter;
+
+        for (uint8 i = 0; i < tokens.length; i++) {
+            _require(minimumBalances[i] != 0, Errors.INVALID_ZERO_MINIMUM_BALANCE);
+            bytes32 currentTokenState = tokenState[IERC20(tokens[i])];
+
+            // // check if token is new token by checking if no startTime is set
+            if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) == 0) {
+                // currentToken is new token
+                // add to fixedWeights (memory)
+                fixedWeights[i] = _INITIAL_WEIGHT;
+                // mark token to be new to allow for additional logic in _startGradualWeightChange (for gas savings)
+                newTokenTargetWeights[i] = desiredWeights[i];
+                // store minimumBalance (state) also serves as initialization flag
+                minBalances[tokens[i]] = minimumBalances[i];
+                // add new token to container to be stored further down
+                newTokensContainer[newTokenCounter] = tokens[i];
+                // increment counter for new tokens (memory)
+                newTokenCounter++;
+            } else {
+                // currentToken is existing (not new) token
+                existingTokens[i] = tokens[i];
+            }
+        }
+
+        newTokens = new IERC20[](newTokenCounter);
+
+        for (uint8 i = 0; i < newTokenCounter; i++) {
+            newTokens[i] = newTokensContainer[i];
+        }
     }
 
     /// @dev When token becomes initialized its weight is immediately adjusted relative to the amount by
