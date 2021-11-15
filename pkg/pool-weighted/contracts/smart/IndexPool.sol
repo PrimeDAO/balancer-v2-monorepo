@@ -401,7 +401,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
         _startGradualWeightChange(
             block.timestamp,
-            block.timestamp + _calcReweighTime(tokens, nextEndWeights), // now + calculated reweigh time
+            block.timestamp.add(_calcReweighTime(tokens, nextEndWeights)), // now + calculated reweigh time
             IndexPoolUtils.normalizeInterpolated(_getNormalizedWeights(), fixedStartWeights), // startWeights
             nextEndWeights,
             tokens,
