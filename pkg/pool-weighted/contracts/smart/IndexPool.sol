@@ -216,44 +216,20 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         //        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
-    /**
-     * @dev Schedule a gradual weight change, from the current weights to the given endWeights,
-     * over startTime to endTime
-     */
-    function _updateWeightsGradually(
-        uint256 startTime,
-        uint256 endTime,
-        uint256[] memory endWeights
-    ) internal nonReentrant {
-        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
-
-        // If the start time is in the past, "fast forward" to start now
-        // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
-        // only 10% of the period in the future, the weights would immediately jump 90%
-        uint256 currentTime = block.timestamp;
-        startTime = Math.max(currentTime, startTime);
-
-        _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
-
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-
+    function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
+        uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
+        require(block.timestamp >= endTime, "Weight change is already in process");
+        InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
+        uint256 changeTime = _calcReweighTime(tokens, desiredWeights);
         _startGradualWeightChange(
-            startTime,
-            endTime,
+            block.timestamp,
+            block.timestamp.add(changeTime),
             _getNormalizedWeights(),
-            endWeights,
+            desiredWeights,
             tokens,
             new uint256[](tokens.length)
         );
     }
-
-    // function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public {
-    //     uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
-    //     require(block.timestamp >= endTime, "Weight change is already in process");
-    //     InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
-    //     uint256 changeTime = _calcReweighTime(tokens, desiredWeights);
-    //     _updateWeightsGradually(block.timestamp, block.timestamp.add(changeTime), desiredWeights);
-    // }
 
     function reindexTokens(
         IERC20[] memory tokens,
