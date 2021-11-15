@@ -183,7 +183,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         IERC20[] memory tokens,
         uint256[] memory newTokenTargetWeights
     ) internal virtual {
-        uint256 normalizedSum = 0;
+        uint256 normalizedSum;
         bytes32 tokenState;
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
@@ -217,7 +217,6 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
-        require(block.timestamp >= _getMiscData().decodeUint32(_END_TIME_OFFSET), "Weight change already in process");
         InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
         _startGradualWeightChange(
             block.timestamp,
@@ -228,14 +227,6 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             new uint256[](tokens.length)
         );
     }
-
-    // function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
-    //     uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
-    //     require(block.timestamp >= endTime, "Weight change is already in process");
-    //     InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
-    //     uint256 changeTime = _calcReweighTime(tokens, desiredWeights);
-    //     _updateWeightsGradually(block.timestamp, block.timestamp.add(changeTime), desiredWeights);
-    // }
 
     function reindexTokens(
         IERC20[] memory tokens,
