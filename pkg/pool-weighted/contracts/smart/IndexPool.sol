@@ -207,7 +207,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
         uint8 newTokenCounter;
 
         for (uint8 i = 0; i < tokens.length; i++) {
-            require(minimumBalances[i] != 0, "Invalid zero minimum balance");
+            _require(minimumBalances[i] != 0, Errors.INVALID_ZERO_MINIMUM_BALANCE);
             bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
 
             // check if token is new token by checking if no startTime is set
@@ -258,7 +258,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
         uint256 currentBalanceTokenOut
     ) public override returns (uint256) {
         //cannot swap out uninitialized token
-        require(minBalances[swapRequest.tokenOut] == 0, "Uninitialized token");
+        _require(minBalances[swapRequest.tokenOut] == 0, Errors.UNINITIALIZED_TOKEN);
 
         // check if uninitialized token will be swapped INTO the pool
         if (minBalances[swapRequest.tokenIn] != 0) {

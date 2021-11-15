@@ -364,13 +364,13 @@ describe.only('IndexPool', function () {
       });
 
       context('when a minimum balance is zero', () => {
-        it('reverts: "INVALID_ZERO_MINIMUM_BALANCE"', async () => {
+        it('reverts: "BAL#700 (INVALID_ZERO_MINIMUM_BALANCE)"', async () => {
           const addresses = allTokens.subset(2).tokens.map((token) => token.address);
           const weights = [fp(0.5), fp(0.5)];
           const invalidMinimumBalances = [1000, 0];
 
           await expect(pool.reindexTokens(controller, addresses, weights, invalidMinimumBalances)).to.be.revertedWith(
-            'Invalid zero minimum balance'
+            'INVALID_ZERO_MINIMUM_BALANCE'
           );
         });
       });
@@ -465,7 +465,7 @@ describe.only('IndexPool', function () {
       });
 
       context('when attempting to swap new token out of pool', () => {
-        it('reverts "Uninitialized token"', async () => {
+        it('reverts "UNINITIALIZED_TOKEN"', async () => {
           await pool.reindexTokens(controller, reindexTokens, reindexWeights, minimumBalances);
 
           const singleSwap = {
@@ -486,7 +486,7 @@ describe.only('IndexPool', function () {
           const deadline = MAX_UINT256;
 
           await expect(vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline)).to.be.revertedWith(
-            'Uninitialized token'
+            'UNINITIALIZED_TOKEN'
           );
         });
       });
