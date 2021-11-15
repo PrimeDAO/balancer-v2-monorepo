@@ -9,8 +9,9 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { FundManagement, SingleSwap, SwapKind } from '@balancer-labs/balancer-js';
-import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
+import * as expectEvent from '../../../pvt/helpers/src/test/expectEvent';
 import { calcOutGivenIn } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
+import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
 
 const calculateMaxWeightDifference = (oldWeights: BigNumber[], newWeights: BigNumber[]) => {
   let maxWeightDifference = 0;

@@ -19,5 +19,11 @@ interface IIndexPool {
         address controller;
     }
 
-    event WeightChange(IERC20[] tokens, uint256[] startWeights, uint256[] endWeights, uint256 endTime);
+    event WeightChange(
+        IERC20[] tokens,
+        uint256[] startWeights,
+        uint256[] endWeights,
+        uint256 startTime,
+        uint256 endTime
+    );
 }

@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../BaseWeightedPool.sol";
+import "./IIndexPool.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "./WeightCompression.sol";
@@ -24,7 +25,7 @@ import "../utils/IndexPoolUtils.sol";
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
-contract IndexPool is BaseWeightedPool, ReentrancyGuard {
+contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
     using WeightCompression for uint256;
@@ -66,18 +67,6 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
     uint256 private constant _SECONDS_IN_A_DAY = 86400;
 
-    struct NewPoolParams {
-        IVault vault;
-        string name;
-        string symbol;
-        IERC20[] tokens;
-        uint256[] normalizedWeights;
-        uint256 swapFeePercentage;
-        uint256 pauseWindowDuration;
-        uint256 bufferPeriodDuration;
-        address controller;
-    }
-
     constructor(NewPoolParams memory params)
         BaseWeightedPool(
             params.vault,
@@ -109,42 +98,6 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             params.tokens,
             new uint256[](params.tokens.length)
         );
-    }
-
-    /**
-     * @dev Return start time, end time, startWeights, endWeights and the final target wights of new tokens as an array.
-     * Current weights should be retrieved via `getNormalizedWeights()`.
-     */
-    function getGradualWeightUpdateParams()
-        public
-        view
-        returns (
-            uint256 startTime,
-            uint256 endTime,
-            uint256[] memory endWeights,
-            uint256[] memory startWeights,
-            uint256[] memory newTokenTargetWeights
-        )
-    {
-        // Load current pool state from storage
-        bytes32 poolState = _getMiscData();
-
-        startTime = poolState.decodeUint32(_START_TIME_OFFSET);
-        endTime = poolState.decodeUint32(_END_TIME_OFFSET);
-
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-        uint256 totalTokens = tokens.length;
-
-        endWeights = new uint256[](totalTokens);
-        startWeights = new uint256[](totalTokens);
-        newTokenTargetWeights = new uint256[](totalTokens);
-
-        for (uint256 i = 0; i < totalTokens; i++) {
-            bytes32 tokenState = _tokenState[tokens[i]];
-            endWeights[i] = tokenState.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
-            startWeights[i] = tokenState.decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
-            newTokenTargetWeights[i] = tokenState.decodeUint32(_NEW_TOKEN_TARGET_WEIGHT_OFFSET).uncompress32();
-        }
     }
 
     /**
@@ -213,7 +166,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         _setMiscData(
             _getMiscData().insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET)
         );
-        //        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
+
+        emit WeightChange(tokens, startWeights, endWeights, startTime, endTime);
     }
 
     function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
@@ -250,7 +204,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             addresses of the new tokens
         */
         IERC20[] memory newTokensContainer = new IERC20[](tokens.length);
-        uint8 newTokenCounter = 0;
+        uint8 newTokenCounter;
 
         for (uint8 i = 0; i < tokens.length; i++) {
             require(minimumBalances[i] != 0, "Invalid zero minimum balance");
@@ -387,7 +341,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         view
         returns (uint256 changeTime)
     {
-        uint256 diff = 0;
+        uint256 diff;
         uint256 numTokens = tokens.length;
 
         for (uint8 i = 0; i < numTokens; i++) {
