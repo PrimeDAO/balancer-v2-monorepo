@@ -243,7 +243,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         );
     }
 
-    // function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public {
+    // function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
     //     uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
     //     require(block.timestamp >= endTime, "Weight change is already in process");
     //     InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
@@ -331,6 +331,18 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
         // check if uninitialized token will be swapped INTO the pool
         if (minBalances[swapRequest.tokenIn] != 0) {
+            // if (swapRequest.kind == IVault.SwapKind.GIVEN_IN) {
+            // IndexPoolUtils.getUninitializedTokenWeight(currentBalanceTokenIn, minBalances[swapRequest.tokenIn]);
+            //     uint256 amountOut = _onSwapGivenIn(
+            //         request,
+            //         balanceTokenIn,
+            //         balanceTokenOut,
+            //         normalizedWeightIn,
+            //         normalizedWeightOut
+            //     );
+            //     // amountOut tokens are exiting the Pool, so we round down.
+            //     return _downscaleDown(amountOut, scalingFactorTokenOut);
+            // }
             /* 
                 check if swap makes token become initialized and do a bunch of things:
             */
@@ -340,6 +352,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                 _setOriginalTargetWeight(currentBalanceTokenIn, swapRequest);
                 // use minimumBalance one last time to calc swap price
                 currentBalanceTokenIn = minBalances[swapRequest.tokenIn];
+
                 // set minimumBalance for initialized token to zero
                 minBalances[swapRequest.tokenIn] = 0;
             } else {
@@ -411,9 +424,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         returns (uint256 changeTime)
     {
         uint256 diff = 0;
-        uint256 numTokens = tokens.length;
 
-        for (uint8 i = 0; i < numTokens; i++) {
+        for (uint8 i = 0; i < tokens.length; i++) {
             uint256 normalizedWeight = _getNormalizedWeight(IERC20(tokens[i]));
 
             if (desiredWeights[i] > normalizedWeight) {
@@ -527,5 +539,12 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         uint256 decimalsDifference = tokenState.decodeUint5(_DECIMAL_DIFF_OFFSET);
 
         return FixedPoint.ONE * 10**decimalsDifference;
+    }
+
+    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
+        return
+            (actionId == getActionId(this.reindexTokens.selector)) ||
+            // (actionId == getActionId(this.reweighTokens.selector)) ||
+            super._isOwnerOnlyAction(actionId);
     }
 }

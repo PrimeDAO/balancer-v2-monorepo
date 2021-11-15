@@ -12,6 +12,9 @@ import { FundManagement, SingleSwap, SwapKind } from '@balancer-labs/balancer-js
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
 import { calcOutGivenIn } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 
+const DEFAULT_UNINITIALIZED_WEIGHT = fp(0.01);
+const HUNDRED_PERCENT_BN = fp(1);
+
 const calculateMaxWeightDifference = (oldWeights: BigNumber[], newWeights: BigNumber[]) => {
   let maxWeightDifference = 0;
   for (let i = 0; i < newWeights.length; i++) {
@@ -29,7 +32,7 @@ const getTimeForWeightChange = (weightDifference: number) => {
   return (weightDifference / 1e18) * 86400 * 100;
 };
 
-describe.only('IndexPool', function () {
+describe('IndexPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress, randomDude: SignerWithAddress, vault: Vault;
 
   before('setup signers', async () => {
@@ -361,11 +364,10 @@ describe.only('IndexPool', function () {
       const standardMinimumBalance = fp(0.01);
       const swapInAmount = fp(0.003);
       const initialTokenAmountsInPool = fp(1);
-      const defaultUninitializedWeight = fp(0.01);
       const minimumBalances = new Array(numberExistingTokens + numberNewTokens).fill(standardMinimumBalance);
 
       const expectedNewStartWeights = [fp(0.396), fp(0.297), fp(0.297), fp(0.01)];
-      const expectedIntermediateEndWeights = [fp(0.55), fp(0.22), fp(0.22), defaultUninitializedWeight];
+      const expectedIntermediateEndWeights = [fp(0.55), fp(0.22), fp(0.22), DEFAULT_UNINITIALIZED_WEIGHT];
 
       let reindexTokens: string[], poolId: string;
 
@@ -494,13 +496,16 @@ describe.only('IndexPool', function () {
           await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
         });
 
-        it('returns the correct amount to the swapper', async () => {
+        it.only('returns the correct amount to the swapper including price premium', async () => {
+          const weightInclPremium = fp(0.011);
           const defaultFeePercentage = 0.01;
           const defaultFeeAmount = pct(swapInAmount, defaultFeePercentage);
+
           const expectedAmount = Math.floor(
             calcOutGivenIn(
               standardMinimumBalance,
-              defaultUninitializedWeight,
+              //fp(0.01)
+              weightInclPremium,
               initialTokenAmountsInPool,
               expectedNewStartWeights[oldTokenIndex],
               swapInAmount.sub(defaultFeeAmount)
@@ -516,14 +521,14 @@ describe.only('IndexPool', function () {
       context('when the new token becomes initialized', () => {
         const numberOfSwapsUntilInitialization = 4;
         const weightAdjustmentFactor =
-          (4 * fromFp(swapInAmount).toNumber()) / fromFp(defaultUninitializedWeight).toNumber();
+          (4 * fromFp(swapInAmount).toNumber()) / fromFp(DEFAULT_UNINITIALIZED_WEIGHT).toNumber();
         // when the new token becomes initialized its weight is immediately adjusted relatively to the amount that its
         // balance exceeds its minimumBalance
         const expectedNewStartWeightsAfterInit = [
           fp(0.3952),
           fp(0.2964),
           fp(0.2964),
-          fp(fromFp(defaultUninitializedWeight).toNumber() * weightAdjustmentFactor),
+          fp(fromFp(DEFAULT_UNINITIALIZED_WEIGHT).toNumber() * weightAdjustmentFactor),
         ];
 
         sharedBeforeEach('swap token into pool', async () => {

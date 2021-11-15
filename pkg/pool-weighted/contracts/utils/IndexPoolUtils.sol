@@ -104,7 +104,7 @@ library IndexPoolUtils {
 
         uint256 balanceDiff = addPremium ? Math.sub(_minimumBalance, _tokenBalanceBeforeSwap) : 0;
 
-        uint256 incentivizationPercentage = FixedPoint.divUp(balanceDiff, (10 * _minimumBalance));
+        uint256 incentivizationPercentage = FixedPoint.divUp(balanceDiff, (Math.mul(10, _minimumBalance)));
         uint256 incentivizationFactor = Math.add(_HUNDRED_PERCENT, incentivizationPercentage);
 
         return FixedPoint.mulUp(_UNINITIALIZED_WEIGHT, incentivizationFactor);
