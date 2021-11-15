@@ -24,6 +24,7 @@ interface IIndexPool {
         uint256[] startWeights,
         uint256[] endWeights,
         uint256 startTime,
-        uint256 endTime
+        uint256 endTime,
+        uint256[] finalTargetWeights
     );
 }

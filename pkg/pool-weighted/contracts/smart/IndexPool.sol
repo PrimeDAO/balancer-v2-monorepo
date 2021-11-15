@@ -167,7 +167,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
             _getMiscData().insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET)
         );
 
-        emit WeightChange(tokens, startWeights, endWeights, startTime, endTime);
+        emit WeightChange(tokens, startWeights, endWeights, startTime, endTime, newTokenTargetWeights);
     }
 
     function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
