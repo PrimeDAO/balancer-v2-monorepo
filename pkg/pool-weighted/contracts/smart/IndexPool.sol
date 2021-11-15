@@ -224,6 +224,16 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     ) internal virtual {
         uint256 normalizedSum = 0;
         bytes32 tokenState;
+
+        uint256 weightDiff = _removeMissedTokens(
+            startTime,
+            endTime
+        );
+        uint256 timeDiff = ((weightDiff.mulDown(IndexPoolUtils._SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
+        uint256 actualEndTime = endTime;
+        if(timeDiff > endTime - startTime){
+            actualEndTime = startTime + timeDiff;
+        }
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
@@ -250,7 +260,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
         _setMiscData(
-            _getMiscData().insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET)
+            _getMiscData().insertUint32(startTime, _START_TIME_OFFSET).insertUint32(actualEndTime, _END_TIME_OFFSET)
         );
         //        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
 
@@ -266,7 +276,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] memory endWeights
     ) internal nonReentrant {
 
-        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
+//        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
 
         // If the start time is in the past, "fast forward" to start now
         // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
@@ -278,30 +288,14 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
-        uint256 weightDiff = _removeMissedTokens(
+        _startGradualWeightChange(
             startTime,
-            endTime
-        );
-        uint256 timeDiff = ((weightDiff.mulDown(IndexPoolUtils._SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
-        if(timeDiff > endTime - startTime){
-            _startGradualWeightChange(
-            startTime,
-            startTime + timeDiff,
+            endTime,
             _getNormalizedWeights(),
             endWeights,
             tokens,
             new uint256[](tokens.length)
-            );
-        } else {
-            _startGradualWeightChange(
-                startTime,
-                endTime,
-                _getNormalizedWeights(),
-                endWeights,
-                tokens,
-                new uint256[](tokens.length)
-            );
-        }
+        );
     }
 
 //    function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
@@ -400,7 +394,12 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _registerNewTokensWithVault(IERC20[] memory newTokensContainer, uint8 amountNewTokens) internal {
-        getVault().registerTokens(getPoolId(), newTokensContainer, new address[](amountNewTokens));
+        IERC20[] memory newTokens = new IERC20[](amountNewTokens);
+
+        for (uint8 i = 0; i < amountNewTokens; i++) {
+            newTokens[i] = newTokensContainer[i];
+        }
+        getVault().registerTokens(getPoolId(), newTokens, new address[](newTokens.length));
     }
 
 

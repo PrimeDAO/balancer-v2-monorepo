@@ -547,5 +547,169 @@ describe('IndexPool', function () {
         });
       });
     });
+
+    context('when removing one token', () => {
+      const numberNewTokens = 3;
+      const numberExistingTokens = 4;
+      const newTokenIndex = 3;
+      const oldTokenIndex = 0;
+      const newTokenTargetWeight = fp(0.1);
+      const originalWeights = [fp(0.1), fp(0.1), fp(0.3), fp(0.5)];
+      const reindexWeights = [fp(0.5), fp(0.2), fp(0.3)];
+      const standardMinimumBalance = fp(0.01);
+      const swapInAmount = fp(0.003);
+      const initialTokenAmountsInPool = fp(1);
+      const minimumBalances = new Array(numberNewTokens).fill(standardMinimumBalance);
+
+      const expectedStartWeights = [fp(0.2), fp(0.2), fp(0.6), fp(0.5)];
+      const expectedEndWeights = [fp(0.5), fp(0.2), fp(0.3), fp(0.01)];
+
+      let reindexTokens: string[], poolId: string;
+
+      sharedBeforeEach('deploy pool', async () => {
+        vault = await Vault.create();
+        const params = {
+          tokens: tokens.subset(numberExistingTokens),
+          weights: originalWeights,
+          owner: controller,
+          poolType: WeightedPoolType.INDEX_POOL,
+          fromFactory: true,
+          vault,
+        };
+        pool = await WeightedPool.create(params);
+      });
+
+      sharedBeforeEach('join pool (aka fund liquidity)', async () => {
+        await tokens.mint({ to: owner, amount: fp(100) });
+        await tokens.approve({ from: owner, to: await pool.getVault() });
+        await pool.init({
+          from: owner,
+          initialBalances: new Array(numberExistingTokens).fill(initialTokenAmountsInPool),
+        });
+      });
+
+      sharedBeforeEach('call reindexTokens function', async () => {
+        reindexTokens = allTokens.subset(numberNewTokens).tokens.map((token) => token.address);
+        poolId = await pool.getPoolId();
+        await pool.reindexTokens(owner, reindexTokens, reindexWeights, minimumBalances);
+      });
+
+      it('adds the new token to the vault registry', async () => {
+        const { tokens: tokensFromVault } = await vault.getPoolTokens(poolId);
+        const tokens = allTokens.subset(numberExistingTokens).tokens.map((token) => token.address);
+        expect(tokensFromVault).to.have.members(tokens);
+      });
+
+      it('sets the correct startWeights for all four tokens', async () => {
+        const { startWeights } = await pool.getGradualWeightUpdateParams();
+        expect(startWeights).to.equalWithError(expectedStartWeights, 0.0001);
+      });
+
+      it('sets the correct endWeights for all four tokens', async () => {
+        const { endWeights } = await pool.getGradualWeightUpdateParams();
+        let i;
+        for (i in endWeights) {
+          console.log(Number(endWeights[i]));
+        }
+        expect(endWeights).to.equalWithError(expectedEndWeights, 0.0001);
+      });
+
+      // it('sets the correct rebalancing period', async () => {
+      //   const maxWeightDifference = calculateMaxWeightDifference(reindexWeights, [...originalWeights, fp(0)]);
+      //   const time = getTimeForWeightChange(maxWeightDifference);
+      //   const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
+      //
+      //   expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
+      // });
+      //
+      // it('sets the correct minimum balance for the new token', async () => {
+      //   const minimumBalance = await pool.minBalances(reindexTokens[reindexTokens.length - 1]);
+      //
+      //   expect(minimumBalance).to.equalWithError(standardMinimumBalance, 0.0001);
+      // });
+      //
+      // it('does not set a minimum balance for existing tokens', async () => {
+      //   const minBalFirstToken = await pool.minBalances(reindexTokens[0]);
+      //   const minBalSecondToken = await pool.minBalances(reindexTokens[1]);
+      //   const minBalThirdToken = await pool.minBalances(reindexTokens[2]);
+      //
+      //   expect(minBalFirstToken).to.equal(0);
+      //   expect(minBalSecondToken).to.equal(0);
+      //   expect(minBalThirdToken).to.equal(0);
+      // });
+      //
+      // it('stores the final target weight for the new token', async () => {
+      //   const expectedNewTokenTargetWeights = [fp(0), fp(0), fp(0), newTokenTargetWeight];
+      //   const { newTokenTargetWeights } = await pool.getGradualWeightUpdateParams();
+      //
+      //   expect(newTokenTargetWeights).to.equalWithError(expectedNewTokenTargetWeights, 0.0001);
+      // });
+      //
+      // context('when attempting to swap new token out of pool', () => {
+      //   it('reverts "Uninitialized token"', async () => {
+      //     const singleSwap = {
+      //       poolId,
+      //       kind: SwapKind.GivenIn,
+      //       assetIn: reindexTokens[0],
+      //       assetOut: reindexTokens[newTokenIndex],
+      //       amount: swapInAmount,
+      //       userData: '0x',
+      //     };
+      //     const funds = {
+      //       sender: owner.address,
+      //       fromInternalBalance: false,
+      //       recipient: other.address,
+      //       toInternalBalance: false,
+      //     };
+      //     const limit = 0; // Minimum amount out
+      //     const deadline = MAX_UINT256;
+      //
+      //     await expect(vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline)).to.be.revertedWith(
+      //       'Uninitialized token'
+      //     );
+      //   });
+      // });
+      //
+      // context('when swapping new token into the pool', () => {
+      //   sharedBeforeEach('swap token into pool', async () => {
+      //     const singleSwap = {
+      //       poolId,
+      //       kind: SwapKind.GivenIn,
+      //       assetIn: reindexTokens[newTokenIndex],
+      //       assetOut: reindexTokens[0],
+      //       amount: swapInAmount,
+      //       userData: '0x',
+      //     };
+      //     const funds = {
+      //       sender: owner.address,
+      //       fromInternalBalance: false,
+      //       recipient: randomDude.address,
+      //       toInternalBalance: false,
+      //     };
+      //     const limit = 0; // Minimum amount out
+      //     const deadline = MAX_UINT256;
+      //     await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+      //   });
+      //
+      //   it('returns the correct amount to the swapper', async () => {
+      //     const defaultFeePercentage = 0.01;
+      //     const defaultUninitializedWeight = fp(0.01);
+      //     const defaultFeeAmount = pct(swapInAmount, defaultFeePercentage);
+      //     const expectedAmount = Math.floor(
+      //       calcOutGivenIn(
+      //         standardMinimumBalance,
+      //         defaultUninitializedWeight,
+      //         initialTokenAmountsInPool,
+      //         expectedStartWeights[oldTokenIndex],
+      //         swapInAmount.sub(defaultFeeAmount)
+      //       ).toNumber()
+      //     );
+      //
+      //     const afterSwapTokenBalance = await allTokens.first.balanceOf(randomDude);
+      //
+      //     expect(afterSwapTokenBalance).to.equalWithError(expectedAmount, 0.001);
+      //   });
+      // });
+    });
   });
 });

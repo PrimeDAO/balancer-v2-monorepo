@@ -32,7 +32,7 @@ library IndexPoolUtils {
     /// @param _fixedWeights Array with weights of tokens. Those that are non-zero are fixed.
     /// @return Array with scaled and fixed weights of tokens. Should add up to one.
     function normalizeInterpolated(uint256[] memory _baseWeights, uint256[] memory _fixedWeights)
-        internal
+        public
         pure
         returns (uint256[] memory)
     {
@@ -104,7 +104,7 @@ library IndexPoolUtils {
     /// @param _minimumBalance Minimum balance set for the uninitialized token (= initialization threshold)
     /// @return Weight to be used to calculate the price of an uninitalized token.
     function getUninitializedTokenWeight(uint256 _tokenBalanceBeforeSwap, uint256 _minimumBalance)
-        internal
+        public
         pure
         returns (uint256)
     {
@@ -129,7 +129,7 @@ library IndexPoolUtils {
     }
 
 
-    function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) internal pure returns (uint256 finalWeight) {
+    function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) public pure returns (uint256 finalWeight) {
         uint256 startWeight = tokenData.decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
         uint256 endWeight = tokenData.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
 
@@ -150,7 +150,7 @@ library IndexPoolUtils {
     /// @param desiredWeights Array with desired weights of tokens. Must be in same order.
     /// @return changeTime Time horizon for the rebalancing period
     function _calcReweighTime(IERC20[] memory tokens, uint256[] memory desiredWeights, uint256[] memory normalizedWeights)
-    internal
+    public
     view
     returns (uint256 changeTime)
     {
