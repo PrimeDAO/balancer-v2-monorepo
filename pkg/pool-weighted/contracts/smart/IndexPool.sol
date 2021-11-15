@@ -336,7 +336,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         // check if uninitialized token will be swapped INTO the pool
         if (minBalances[swapRequest.tokenIn] != 0) {
             /* 
-                check if swap makes token become initialized and do a bunch of things:
+                check if swap makes token become initialized
             */
             if (currentBalanceTokenIn.add(swapRequest.amount) >= minBalances[swapRequest.tokenIn]) {
                 // initiate new weight change this time with the final target weights (from reindex call)
