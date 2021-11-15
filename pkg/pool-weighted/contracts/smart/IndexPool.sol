@@ -218,7 +218,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
     function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
         uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
-        require(block.timestamp >= endTime, "Weight change is already in process");
+        require(block.timestamp >= endTime, "Weight change already in process");
         InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
         uint256 changeTime = _calcReweighTime(tokens, desiredWeights);
         _startGradualWeightChange(
