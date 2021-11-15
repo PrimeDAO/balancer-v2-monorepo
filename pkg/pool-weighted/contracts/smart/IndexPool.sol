@@ -536,7 +536,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
             (actionId == getActionId(this.reindexTokens.selector)) ||
-            (actionId == getActionId(this.reweighTokens.selector)) ||
+            // (actionId == getActionId(this.reweighTokens.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
 }

@@ -645,7 +645,7 @@ describe('IndexPool', function () {
       sharedBeforeEach('call reindexTokens function', async () => {
         reindexTokens = allTokens.subset(numberExistingTokens + numberNewTokens).tokens.map((token) => token.address);
         poolId = await pool.getPoolId();
-        await pool.reindexTokens(reindexTokens, reindexWeights, minimumBalances);
+        await pool.reindexTokens(controller, reindexTokens, reindexWeights, minimumBalances);
       });
 
       context('when one of the two tokens becomes initialized', () => {
