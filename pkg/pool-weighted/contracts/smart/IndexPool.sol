@@ -100,10 +100,10 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         _setMiscData(_getMiscData().insertUint7(numTokens, _TOTAL_TOKENS_OFFSET));
         // Double check it fits in 7 bits
         _require(_getTotalTokens() == numTokens, Errors.MAX_TOKENS);
-        uint256 currentTime = block.timestamp;
+
         _startGradualWeightChange(
-            currentTime,
-            currentTime,
+            block.timestamp,
+            block.timestamp,
             params.normalizedWeights,
             params.normalizedWeights,
             params.tokens,
@@ -217,19 +217,25 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
-        uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
-        require(block.timestamp >= endTime, "Weight change already in process");
+        require(block.timestamp >= _getMiscData().decodeUint32(_END_TIME_OFFSET), "Weight change already in process");
         InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
-        uint256 changeTime = _calcReweighTime(tokens, desiredWeights);
         _startGradualWeightChange(
             block.timestamp,
-            block.timestamp.add(changeTime),
+            block.timestamp.add(_calcReweighTime(tokens, desiredWeights)),
             _getNormalizedWeights(),
             desiredWeights,
             tokens,
             new uint256[](tokens.length)
         );
     }
+
+    // function reweighTokens(IERC20[] calldata tokens, uint256[] calldata desiredWeights) public authenticate {
+    //     uint256 endTime = _getMiscData().decodeUint32(_END_TIME_OFFSET);
+    //     require(block.timestamp >= endTime, "Weight change is already in process");
+    //     InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length);
+    //     uint256 changeTime = _calcReweighTime(tokens, desiredWeights);
+    //     _updateWeightsGradually(block.timestamp, block.timestamp.add(changeTime), desiredWeights);
+    // }
 
     function reindexTokens(
         IERC20[] memory tokens,
