@@ -702,4 +702,23 @@ describe('IndexPool', function () {
       });
     });
   });
+
+  describe('#setMinimalWeight', () => {
+    sharedBeforeEach('deploy pool', async () => {
+      const params = {
+        tokens,
+        weights,
+        owner,
+        poolType: WeightedPoolType.INDEX_POOL,
+        swapEnabledOnStart: false,
+      };
+      pool = await WeightedPool.create(params);
+    });
+
+    context('when called from not authenticated account', () => {
+      it("reverts: 'BAL#401' (SENDER_NOT_ALLOWED)", async () => {
+        await expect(pool.setMinimumBalance(tokens.get(0).address, fp(1))).to.be.revertedWith('BAL#401');
+      });
+    });
+  });
 });

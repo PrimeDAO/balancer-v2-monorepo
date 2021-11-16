@@ -661,4 +661,11 @@ export default class WeightedPool {
     const pool = this.instance.connect(from);
     return await pool.reindexTokens(tokens, normalizedWeights, minimumBalances);
   }
+
+  async setMinimumBalance(
+    token: string,
+    minimumBalance: BigNumber
+  ): Promise<ContractTransaction> {
+    return await this.instance.setMinimumBalance(token, minimumBalance);
+  }
 }

@@ -30,6 +30,9 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
     using WeightCompression for uint256;
     using IndexPoolUtils for *;
 
+    /** @dev Emitted when a token's minimum balance is updated. */
+    event LOG_MINIMUM_BALANCE_UPDATED(address token, uint256 minimumBalance);
+
     uint256 private constant _MAX_TOKENS = 50;
     uint256 private constant _INITIAL_WEIGHT = 10**16;
     uint256 private constant _MIN_TOKENS = 3;
@@ -82,7 +85,35 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         address controller;
     }
 
-    constructor(NewPoolParams memory params)
+
+    uint256 private immutable _totalTokens;
+
+    IERC20[] internal _tokens;
+    uint256[] internal _minimumBalances;
+
+    // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
+    // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
+    // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
+    uint256[] internal scalingFactors;
+
+    // The protocol fees will always be charged using the token associated with the max weight in the pool.
+    // Since these Pools will register tokens only once, we can assume this index will be constant.
+    uint256 internal immutable _maxWeightTokenIndex;
+
+    uint256[] internal _normalizedWeights;
+
+    constructor(
+        IVault vault,
+        string memory name,
+        string memory symbol,
+        IERC20[] memory tokens,
+        uint256[] memory normalizedWeights,
+        address[] memory assetManagers,
+        uint256 swapFeePercentage,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
+        address owner
+    )
         BaseWeightedPool(
             params.vault,
             params.name,
@@ -149,6 +180,32 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             startWeights[i] = tokenState.decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
             newTokenTargetWeights[i] = tokenState.decodeUint32(_NEW_TOKEN_TARGET_WEIGHT_OFFSET).uncompress32();
         }
+    }
+
+    /**
+    * @dev Updates the minimum balance for an uninitialized token.
+    * This becomes useful if a token's external price significantly
+    * rises after being bound, since the pool can not send a token
+    * out until it reaches the minimum balance.
+    */
+    function setMinimumBalance(
+        address token,
+        uint256 minimumBalance
+    )
+    external
+    authenticate
+    {
+        uint8 index = 0;
+        for( ; index < _tokens.length; ){
+            if (token == address(_tokens[index])){
+                require(_normalizedWeights[index] == FixedPoint.ONE, "Token is already initialized");
+                _minimumBalances[index] = minimumBalance;
+                emit LOG_MINIMUM_BALANCE_UPDATED(token, minimumBalance);
+                return;
+            }
+            index++;
+        }
+        revert("Provided token is not in the pool");
     }
 
     /**
