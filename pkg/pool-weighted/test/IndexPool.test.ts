@@ -77,7 +77,7 @@ const getAdjustedExistingTokenWeights = (
   return adjustedTokenWeights;
 };
 
-describe.only('IndexPool', function () {
+describe('IndexPool', function () {
   let owner: SignerWithAddress,
     controller: SignerWithAddress,
     other: SignerWithAddress,
@@ -431,7 +431,7 @@ describe.only('IndexPool', function () {
       const oldTokenIndex = 0;
       const newTokenTargetWeight = fp(0.1);
       const originalWeights = [fp(0.4), fp(0.3), fp(0.3)];
-      const desiredWeights = [fp(0.5), fp(0.2), fp(0.2), newTokenTargetWeight];
+      const reindexWeights = [fp(0.5), fp(0.2), fp(0.2), newTokenTargetWeight];
       const standardMinimumBalance = fp(0.01);
       const swapInAmount = fp(0.003);
       const initialTokenAmountsInPool = fp(1);
@@ -470,7 +470,7 @@ describe.only('IndexPool', function () {
       sharedBeforeEach('call reindexTokens function', async () => {
         reindexTokens = allTokens.subset(numberExistingTokens + numberNewTokens).tokens.map((token) => token.address);
         poolId = await pool.getPoolId();
-        await pool.reindexTokens(controller, reindexTokens, desiredWeights, minimumBalances);
+        await pool.reindexTokens(controller, reindexTokens, reindexWeights, minimumBalances);
       });
 
       it('adds the new token to the vault registry', async () => {
@@ -492,7 +492,7 @@ describe.only('IndexPool', function () {
       });
 
       it('sets the correct rebalancing period', async () => {
-        const maxWeightDifference = calculateMaxWeightDifference(desiredWeights, [...originalWeights, fp(0)]);
+        const maxWeightDifference = calculateMaxWeightDifference(reindexWeights, [...originalWeights, fp(0)]);
         const time = getTimeForWeightChange(maxWeightDifference);
         const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
 

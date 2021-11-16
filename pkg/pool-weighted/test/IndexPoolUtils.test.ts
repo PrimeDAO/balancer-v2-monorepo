@@ -52,7 +52,7 @@ const setupNewTokens = (numWeights: number) => {
 const getTotalWeight = (weights: BigNumber[]): BigNumber =>
   weights.reduce((acc, curr) => acc.add(curr), BigNumber.from(0));
 
-describe.only('IndexPoolUtils', function () {
+describe('IndexPoolUtils', function () {
   let indexPoolUtilsInstance: Contract;
 
   beforeEach(async () => {
