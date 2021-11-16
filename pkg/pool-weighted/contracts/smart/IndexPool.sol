@@ -208,10 +208,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
             for (uint8 i = 0; i < tokens.length; i++) {
                 bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
                 require(currentTokenState.decodeUint5(_CHECKED_OFFSET) != _CHECKED, "Duplicate token address provided");
-                _tokenState[IERC20(tokens[i])] = currentTokenState.insertUint5(
-                    _CHECKED,
-                    _CHECKED_OFFSET
-                );
+                _tokenState[IERC20(tokens[i])] = currentTokenState.insertUint5(_CHECKED, _CHECKED_OFFSET);
                 if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) != 0) {
                     baseWeights[i] = _getNormalizedWeight(tokens[i]);
                     oldTokensLength++;
