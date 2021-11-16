@@ -666,51 +666,51 @@ describe('IndexPool', function () {
 
           await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
         });
-        it('returns the correct amount to the swapper', async () => {
-          const defaultFeePercentage = 0.01;
-          const defaultUninitializedWeight = fp(0.01);
-          const defaultFeeAmount = pct(swapInAmount, defaultFeePercentage);
-          const expectedAmount = Math.floor(
-            calcOutGivenIn(
-              standardMinimumBalance,
-              defaultUninitializedWeight,
-              initialTokenAmountsInPool,
-              expectedStartWeights[oldTokenIndex],
-              swapInAmount.sub(defaultFeeAmount)
-            ).toNumber()
-          );
-
-          const afterSwapTokenBalance = await allTokens.fourth.balanceOf(other);
-          console.log(afterSwapTokenBalance);
-
-          expect(afterSwapTokenBalance).to.equalWithError(expectedAmount, 0.001);
-        });
+        // it('returns the correct amount to the swapper', async () => {
+        //   const defaultFeePercentage = 0.01;
+        //   const defaultUninitializedWeight = fp(0.01);
+        //   const defaultFeeAmount = pct(swapInAmount, defaultFeePercentage);
+        //   const expectedAmount = Math.floor(
+        //     calcOutGivenIn(
+        //       standardMinimumBalance,
+        //       defaultUninitializedWeight,
+        //       initialTokenAmountsInPool,
+        //       expectedStartWeights[oldTokenIndex],
+        //       swapInAmount.sub(defaultFeeAmount)
+        //     ).toNumber()
+        //   );
+        //
+        //   const afterSwapTokenBalance = await allTokens.fourth.balanceOf(other);
+        //   console.log(afterSwapTokenBalance);
+        //
+        //   expect(afterSwapTokenBalance).to.equalWithError(expectedAmount, 0.001);
+        // });
       });
 
-      // context('when swapping removed token into the pool', () => {
-      //   it('reverts "Removed token"', async () => {
-      //     const tokenOut = allTokens.subset(numberExistingTokens).tokens.map((token) => token.address)[3];
-      //     const singleSwap = {
-      //       poolId,
-      //       kind: SwapKind.GivenIn,
-      //       assetIn: tokenOut,
-      //       assetOut: reindexTokens[0],
-      //       amount: swapInAmount,
-      //       userData: '0x',
-      //     };
-      //     const funds = {
-      //       sender: owner.address,
-      //       fromInternalBalance: false,
-      //       recipient: randomDude.address,
-      //       toInternalBalance: false,
-      //     };
-      //     const limit = 0; // Minimum amount out
-      //     const deadline = MAX_UINT256;
-      //     await expect(vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline)).to.be.revertedWith(
-      //       'Removed token'
-      //     );
-      //   });
-      // });
+      context('when swapping removed token into the pool', () => {
+        it('reverts "Removed token"', async () => {
+          const tokenOut = allTokens.subset(numberExistingTokens).tokens.map((token) => token.address)[3];
+          const singleSwap = {
+            poolId,
+            kind: SwapKind.GivenIn,
+            assetIn: tokenOut,
+            assetOut: reindexTokens[0],
+            amount: swapInAmount,
+            userData: '0x',
+          };
+          const funds = {
+            sender: owner.address,
+            fromInternalBalance: false,
+            recipient: randomDude.address,
+            toInternalBalance: false,
+          };
+          const limit = 0; // Minimum amount out
+          const deadline = MAX_UINT256;
+          await expect(vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline)).to.be.revertedWith(
+            'Removed token'
+          );
+        });
+      });
     });
   });
 });

@@ -175,48 +175,6 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         return secondsElapsed.divDown(totalSeconds);
     }
 
-    function _removeMissedTokens()
-        internal
-        returns (
-            uint256 weightDiff,
-            IERC20[] memory,
-            uint256 length
-        )
-    {
-        // This is an array of oldTokens which will be trimmed to understand what tokens are removed
-        (IERC20[] memory oldTokens, , ) = getVault().getPoolTokens(getPoolId());
-        weightDiff = 0;
-        IERC20[] memory tokens = new IERC20[](oldTokens.length);
-        uint256 onePercent = FixedPoint.ONE / 100;
-        uint256 removedTokensLength = 0;
-        bytes32 tokenState;
-        for (uint256 i = 0; i < oldTokens.length; i++) {
-            tokenState = _tokenState[IERC20(oldTokens[i])];
-            uint256 removeFlag = tokenState.decodeUint5(_REMOVE_FLAG_OFFSET);
-            // checking if token was listed in the array of new tokens
-            if (removeFlag != _SAVE_FLAG) {
-                uint256 currentWeight = _getNormalizedWeight(IERC20(oldTokens[i]));
-                // setting desired weight to 1 %, current weight to current %, and adding REMOVE_FLAG
-                tokenState = tokenState
-                    .insertUint64(currentWeight.compress64(), _START_WEIGHT_OFFSET)
-                    .insertUint32((onePercent).compress32(), _END_WEIGHT_OFFSET)
-                    .insertUint5(uint256(18).sub(ERC20(address(oldTokens[i])).decimals()), _DECIMAL_DIFF_OFFSET)
-                    .insertUint5(_REMOVE_FLAG, _REMOVE_FLAG_OFFSET);
-                require(currentWeight > onePercent, "Cannot remove uninitialized token");
-                if (weightDiff < currentWeight.sub(onePercent)) {
-                    weightDiff = currentWeight.sub(onePercent);
-                }
-
-                // write new token state to storage
-                _tokenState[IERC20(oldTokens[i])] = tokenState;
-                tokens[removedTokensLength] = (IERC20(oldTokens[i]));
-                removedTokensLength++;
-            } else {
-                _tokenState[IERC20(oldTokens[i])] = tokenState.insertUint5(_NORMAL_FLAG, _REMOVE_FLAG_OFFSET);
-            }
-        }
-        return (weightDiff, tokens, removedTokensLength);
-    }
 
     /**
      * @dev When calling _updateWeightsGradually again during an update,
@@ -313,58 +271,92 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             assemble params for IndexPoolUtils._normalizeInterpolated:
         */
         // the initial weights in the pool (here a new token has a weight of zero)
-        uint256[] memory baseWeights = new uint256[](tokens.length);
+        uint256[] memory baseWeights;
         // the weights that are fixed and that the other tokens need to be adjusted by
-        uint256[] memory fixedWeights = new uint256[](tokens.length);
+        uint256[] memory fixedWeights;
         // we need to store the final desired weight of a new tokensince initially it will be set to 1%
-        uint256[] memory newTokenTargetWeights = new uint256[](tokens.length);
-
-        /*
-            this is some mambojambo to get an array that only contains the
-            addresses of the new tokens
-        */
-        IERC20[] memory newTokensContainer = new IERC20[](tokens.length);
-        uint8 newTokenCounter = 0;
-
-        for (uint8 i = 0; i < tokens.length; i++) {
-            require(minimumBalances[i] != 0, "Invalid zero minimum balance");
-            bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
-
-            // check if token is new token by checking if no startTime is set
-            if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) == 0) {
-                // currentToken is new token
-                // add to fixedWeights (memory)
-                fixedWeights[i] = _INITIAL_WEIGHT;
-                // mark token to be new to allow for additional logic in _startGradualWeightChange (for gas savings)
-                newTokenTargetWeights[i] = desiredWeights[i];
-                // store minimumBalance (state) also serves as initialization flag
-                minBalances[tokens[i]] = minimumBalances[i];
-                // add new token to container to be stored further down
-                newTokensContainer[newTokenCounter] = tokens[i];
-                // increment counter for new tokens (memory)
-                newTokenCounter++;
-            } else {
-                // currentToken is existing (not new) token
-                baseWeights[i] = _getNormalizedWeight(IERC20(tokens[i]));
-            }
-            // currentToken is being saved to mitigate its removal
-            _tokenState[IERC20(tokens[i])] = currentTokenState.insertUint5(_SAVE_FLAG, _REMOVE_FLAG_OFFSET);
-        }
-
-        _registerNewTokensWithVault(newTokensContainer, newTokenCounter);
-
-        uint256 changeTimeDiff = IndexPoolUtils.calcReweighTime(tokens, desiredWeights, _getNormalizedWeights());
+        uint256[] memory newTokenTargetWeights;
+        // we need to store the final desired weight of a new tokensince initially it will be set to 1%
+        IERC20[] memory allTokens;
+        // we need to store the final desired weight of a new tokensince initially it will be set to 1%
+        uint256[] memory allDesiredWeights;
         {
-            (uint256 weightDiff, IERC20[] memory removedTokens, uint256 removedTokensLength) = _removeMissedTokens();
-            if (removedTokensLength > 0) {
-                uint256 removeTimeDiff = ((weightDiff.mulDown(IndexPoolUtils.SECONDS_IN_A_DAY)).divDown(
-                    FixedPoint.ONE
-                ) * 100);
-                if (removeTimeDiff > changeTimeDiff) {
-                    changeTimeDiff = removeTimeDiff;
+            (IERC20[] memory oldTokens, , ) = getVault().getPoolTokens(getPoolId());
+            uint256 removedTokensLength = oldTokens.length;
+            // calculation of removed tokens amount and marking tokens for removal
+            for(uint8 i = 0; i < tokens.length; i++){
+                bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
+                if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) != 0) {
+                    removedTokensLength--;
+                    // currentToken is being saved to mitigate its removal
+                    _tokenState[IERC20(tokens[i])] = currentTokenState.insertUint5(_SAVE_FLAG, _REMOVE_FLAG_OFFSET);
                 }
             }
+
+            // token arrays initialization
+            uint256 len = tokens.length;
+            baseWeights = new uint256[](len + removedTokensLength);
+            fixedWeights = new uint256[](len + removedTokensLength);
+            newTokenTargetWeights = new uint256[](len + removedTokensLength);
+            allTokens = new IERC20[](len + removedTokensLength);
+            allDesiredWeights = new uint256[](len + removedTokensLength);
+
+            // Adding removed tokens to the overall token array
+            for(uint8 i = 0; i < oldTokens.length; i++){
+                bytes32 currentTokenState = _tokenState[IERC20(oldTokens[i])];
+                uint256 removeFlag = currentTokenState.decodeUint5(_REMOVE_FLAG_OFFSET);
+                if(removeFlag != _SAVE_FLAG){
+                    uint256 weight = _getNormalizedWeight(IERC20(oldTokens[i]));
+                    baseWeights[len + removedTokensLength - 1] = weight;
+                    allTokens[len + removedTokensLength - 1] = oldTokens[i];
+                    allDesiredWeights[len + removedTokensLength - 1] = _INITIAL_WEIGHT;
+                    removedTokensLength--;
+                    // currentToken being removed
+                    _tokenState[IERC20(oldTokens[i])] = currentTokenState.insertUint5(_REMOVE_FLAG, _REMOVE_FLAG_OFFSET);
+                } else {
+                    // currentToken returned to normal state
+                    _tokenState[IERC20(oldTokens[i])] = currentTokenState.insertUint5(_NORMAL_FLAG, _REMOVE_FLAG_OFFSET);
+                }
+            }
+
         }
+        {
+            /*
+                this is some mambojambo to get an array that only contains the
+                addresses of the new tokens
+            */
+            IERC20[] memory newTokensContainer = new IERC20[](tokens.length);
+            uint8 newTokenCounter = 0;
+
+            for (uint8 i = 0; i < tokens.length; i++) {
+                require(minimumBalances[i] != 0, "Invalid zero minimum balance");
+                bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
+                allTokens[i] = tokens[i];
+                allDesiredWeights[i] = desiredWeights[i];
+                // check if token is new token by checking if no startTime is set
+                if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) == 0) {
+                    // currentToken is new token
+                    // add to fixedWeights (memory)
+                    fixedWeights[i] = _INITIAL_WEIGHT;
+                    // mark token to be new to allow for additional logic in _startGradualWeightChange (for gas savings)
+                    newTokenTargetWeights[i] = desiredWeights[i];
+                    // store minimumBalance (state) also serves as initialization flag
+                    minBalances[tokens[i]] = minimumBalances[i];
+                    // add new token to container to be stored further down
+                    newTokensContainer[newTokenCounter] = tokens[i];
+                    // increment counter for new tokens (memory)
+                    newTokenCounter++;
+                } else {
+                    // currentToken is existing (not new) token
+                    baseWeights[i] = _getNormalizedWeight(IERC20(tokens[i]));
+                }
+            }
+
+            _registerNewTokensWithVault(newTokensContainer, newTokenCounter);
+        }
+
+        // variable to store the time it will take to reweight the pool
+        uint256 changeTimeDiff = IndexPoolUtils.calcReweighTime(allTokens, allDesiredWeights, _getNormalizedWeights());
         //setting the initial
         _startGradualWeightChange(
             block.timestamp,
@@ -377,8 +369,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             IndexPoolUtils.normalizeInterpolated(baseWeights, fixedWeights),
             // TODO: here we will need the endWeights as long as they apply until the new token becomes initialized
             // e.g. 45/45/10 after new token becomes initialized and aims for fina target weight of 10%
-            IndexPoolUtils.normalizeInterpolated(desiredWeights, fixedWeights),
-            tokens,
+            IndexPoolUtils.normalizeInterpolated(allDesiredWeights, fixedWeights),
+            allTokens,
             newTokenTargetWeights
         );
     }
