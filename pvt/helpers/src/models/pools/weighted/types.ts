@@ -32,6 +32,7 @@ export type RawWeightedPoolDeployment = {
   vault?: Vault;
   fromFactory?: boolean;
   poolType?: WeightedPoolType;
+  tokenHandler?: string;
 };
 
 export type WeightedPoolDeployment = {
@@ -48,6 +49,7 @@ export type WeightedPoolDeployment = {
   owner?: SignerWithAddress;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
+  tokenHandler?: string;
 };
 
 export type SwapWeightedPool = {

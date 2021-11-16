@@ -57,7 +57,9 @@ export default {
       managementSwapFeePercentage,
       owner,
       from,
+      tokenHandler,
     } = params;
+
     let result: Promise<Contract>;
 
     switch (poolType) {
@@ -137,6 +139,7 @@ export default {
               pauseWindowDuration: pauseWindowDuration,
               bufferPeriodDuration: bufferPeriodDuration,
               controller: TypesConverter.toAddress(owner),
+              tokenHandler: TypesConverter.toAddress(tokenHandler),
             },
           ],
           from,
@@ -178,6 +181,7 @@ export default {
       poolType,
       owner,
       from,
+      tokenHandler,
     } = params;
     let result: Promise<Contract>;
 
@@ -253,7 +257,8 @@ export default {
           tokens.addresses,
           weights,
           swapFeePercentage,
-          TypesConverter.toAddress(owner)
+          TypesConverter.toAddress(owner),
+          TypesConverter.toAddress(tokenHandler)
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');

@@ -64,8 +64,9 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
     uint256 private constant _UNINITIALIZED_OFFSET = 101;
     uint256 private constant _NEW_TOKEN_TARGET_WEIGHT_OFFSET = 106;
-
     uint256 private constant _SECONDS_IN_A_DAY = 86400;
+
+    address public tokenHandler;
 
     constructor(NewPoolParams memory params)
         BaseWeightedPool(
@@ -89,6 +90,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
         _setMiscData(_getMiscData().insertUint7(numTokens, _TOTAL_TOKENS_OFFSET));
         // Double check it fits in 7 bits
         _require(_getTotalTokens() == numTokens, Errors.MAX_TOKENS);
+
+        tokenHandler = params.tokenHandler;
 
         _startGradualWeightChange(
             block.timestamp,

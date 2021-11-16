@@ -35,16 +35,18 @@ describe('IndexPool', function () {
     controller: SignerWithAddress,
     other: SignerWithAddress,
     randomDude: SignerWithAddress,
+    tokenHandler: SignerWithAddress,
     vault: Vault;
 
   before('setup signers', async () => {
-    [, owner, other, randomDude] = await ethers.getSigners();
+    [, owner, other, randomDude, tokenHandler] = await ethers.getSigners();
     controller = owner;
   });
 
   const MAX_TOKENS = 4;
+  const weights = [fp(0.3), fp(0.55), fp(0.1), fp(0.05)];
 
-  let allTokens: TokenList, tokens: TokenList;
+  let allTokens: TokenList, tokens: TokenList, pool: WeightedPool;
 
   sharedBeforeEach('deploy tokens', async () => {
     allTokens = await TokenList.create(MAX_TOKENS + 1, { sorted: true });
@@ -52,70 +54,89 @@ describe('IndexPool', function () {
     await tokens.mint({ to: [other], amount: fp(200) });
   });
 
-  let pool: WeightedPool;
-  const weights = [fp(0.3), fp(0.55), fp(0.1), fp(0.05)];
+  describe.only('standalone deployment', () => {
+    context('with invalid creation parameters', () => {
+      const tooManyWeights = [fp(0.3), fp(0.25), fp(0.3), fp(0.1), fp(0.05)];
 
-  context('with invalid creation parameters', () => {
-    const tooManyWeights = [fp(0.3), fp(0.25), fp(0.3), fp(0.1), fp(0.05)];
+      it('fails with < 3 tokens', async () => {
+        const params = {
+          tokens: allTokens.subset(2),
+          weights: [fp(0.3), fp(0.7)],
+          owner,
+          poolType: WeightedPoolType.INDEX_POOL,
+        };
+        await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
 
-    it('fails with < 3 tokens', async () => {
-      const params = {
-        tokens: allTokens.subset(2),
-        weights: [fp(0.3), fp(0.7)],
-        owner,
-        poolType: WeightedPoolType.INDEX_POOL,
-      };
-      await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
+        const params2 = {
+          tokens: allTokens.subset(1),
+          weights: [fp(0.3)],
+          owner: controller,
+          poolType: WeightedPoolType.INDEX_POOL,
+        };
+        await expect(WeightedPool.create(params2)).to.be.revertedWith('MIN_TOKENS');
+      });
 
-      const params2 = {
-        tokens: allTokens.subset(1),
-        weights: [fp(0.3)],
-        owner: controller,
-        poolType: WeightedPoolType.INDEX_POOL,
-      };
-      await expect(WeightedPool.create(params2)).to.be.revertedWith('MIN_TOKENS');
+      it('fails with mismatched tokens/weights', async () => {
+        const params = {
+          tokens,
+          weights: tooManyWeights,
+          owner: controller,
+          poolType: WeightedPoolType.INDEX_POOL,
+        };
+        await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+      });
     });
 
-    it('fails with mismatched tokens/weights', async () => {
-      const params = {
-        tokens,
-        weights: tooManyWeights,
-        owner: controller,
-        poolType: WeightedPoolType.INDEX_POOL,
-      };
-      await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-    });
-  });
+    describe('weights and scaling factors', () => {
+      for (const numTokens of range(3, MAX_TOKENS + 1)) {
+        context(`with ${numTokens} tokens`, () => {
+          sharedBeforeEach('deploy pool', async () => {
+            tokens = allTokens.subset(numTokens);
 
-  describe('weights and scaling factors', () => {
-    for (const numTokens of range(3, MAX_TOKENS + 1)) {
-      context(`with ${numTokens} tokens`, () => {
-        sharedBeforeEach('deploy pool', async () => {
-          tokens = allTokens.subset(numTokens);
+            pool = await WeightedPool.create({
+              poolType: WeightedPoolType.INDEX_POOL,
+              tokens,
+              weights: weights.slice(0, numTokens),
+            });
+          });
 
-          pool = await WeightedPool.create({
-            poolType: WeightedPoolType.INDEX_POOL,
-            tokens,
-            weights: weights.slice(0, numTokens),
+          it('sets token weights', async () => {
+            const normalizedWeights = await pool.getNormalizedWeights();
+
+            for (let i = 0; i < numTokens; i++) {
+              expect(normalizedWeights[i]).to.equalWithError(pool.normalizedWeights[i], 0.0001);
+            }
+          });
+
+          it('sets scaling factors', async () => {
+            const poolScalingFactors = await pool.getScalingFactors();
+            const tokenScalingFactors = tokens.map((token) => fp(10 ** (18 - token.decimals)));
+
+            expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
           });
         });
+      }
+    });
 
-        it('sets token weights', async () => {
-          const normalizedWeights = await pool.getNormalizedWeights();
+    describe('token handler', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        tokens = allTokens.subset(4);
 
-          for (let i = 0; i < numTokens; i++) {
-            expect(normalizedWeights[i]).to.equalWithError(pool.normalizedWeights[i], 0.0001);
-          }
-        });
-
-        it('sets scaling factors', async () => {
-          const poolScalingFactors = await pool.getScalingFactors();
-          const tokenScalingFactors = tokens.map((token) => fp(10 ** (18 - token.decimals)));
-
-          expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
+        pool = await WeightedPool.create({
+          poolType: WeightedPoolType.INDEX_POOL,
+          tokens,
+          owner: controller,
+          tokenHandler: tokenHandler.address,
+          weights: weights.slice(0, 4),
         });
       });
-    }
+
+      it('sets the correct token handler address', async () => {
+        const reveivedTokenHandler = await pool.tokenHandler();
+
+        expect(reveivedTokenHandler).to.equal(tokenHandler.address);
+      });
+    });
   });
 
   context('when deployed from factory', () => {
@@ -730,6 +751,65 @@ describe('IndexPool', function () {
             finalTargetWeights: expectedNewTokenTargetWeights,
           });
         });
+      });
+    });
+
+    context('when removing one token', () => {
+      const numTokens = 4;
+      const removeTokenIndex = 3;
+      const removeTokenWeight = fp(0.01);
+      const removeAmountInPool = fp(0.5);
+      const initialWeights = [fp(0.3), fp(0.59), fp(0.1), removeTokenWeight];
+      const swapAmount = fp(0.003);
+      const defaultPoolAmount = fp(1);
+      const initialBalances = [defaultPoolAmount, defaultPoolAmount, defaultPoolAmount, removeAmountInPool];
+
+      let poolId: string, vault: Vault;
+
+      sharedBeforeEach('setup tokens & deploy pool', async () => {
+        tokens = allTokens.subset(numTokens);
+        vault = await Vault.create();
+        const params = {
+          tokens: tokens.subset(numTokens),
+          weights: initialWeights,
+          owner,
+          poolType: WeightedPoolType.INDEX_POOL,
+          fromFactory: true,
+          vault,
+        };
+        pool = await WeightedPool.create(params);
+        poolId = await pool.getPoolId();
+      });
+
+      sharedBeforeEach('join pool (aka fund liquidity)', async () => {
+        await tokens.mint({ to: owner, amount: fp(100) });
+        await tokens.approve({ from: owner, to: await pool.getVault() });
+        await pool.init({ from: owner, initialBalances });
+      });
+
+      sharedBeforeEach('swap REMOVE_TOKEN out', async () => {
+        const singleSwap = {
+          poolId,
+          kind: SwapKind.GivenIn,
+          assetIn: tokens.map((token) => token.address)[0],
+          assetOut: tokens.map((token) => token.address)[removeTokenIndex],
+          amount: swapAmount,
+          userData: '0x',
+        };
+        const funds = {
+          sender: owner.address,
+          fromInternalBalance: false,
+          recipient: other.address,
+          toInternalBalance: false,
+        };
+        const limit = 0; // Minimum amount out
+        const deadline = MAX_UINT256;
+
+        await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+      });
+
+      it('sends the residual amount of REMOVE_TOKEN ', () => {
+        console.log(pool);
       });
     });
   });

@@ -58,6 +58,7 @@ export default {
       swapEnabledOnStart,
       managementSwapFeePercentage,
       poolType,
+      tokenHandler,
     } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
@@ -70,6 +71,7 @@ export default {
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (managementSwapFeePercentage === undefined) managementSwapFeePercentage = fp(0);
+    if (!tokenHandler) tokenHandler = ZERO_ADDRESS;
     if (poolType === WeightedPoolType.WEIGHTED_POOL_2TOKENS && tokens.length !== 2)
       throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
     return {
@@ -84,6 +86,7 @@ export default {
       managementSwapFeePercentage,
       owner: params.owner,
       poolType,
+      tokenHandler,
     };
   },
 

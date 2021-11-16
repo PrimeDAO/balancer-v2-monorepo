@@ -17,6 +17,7 @@ interface IIndexPool {
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
         address controller;
+        address tokenHandler;
     }
 
     event WeightChange(

@@ -661,4 +661,8 @@ export default class WeightedPool {
     const pool = this.instance.connect(from);
     return await pool.reindexTokens(tokens, normalizedWeights, minimumBalances);
   }
+
+  async tokenHandler(): Promise<string> {
+    return await this.instance.tokenHandler();
+  }
 }
