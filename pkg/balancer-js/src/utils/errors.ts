@@ -128,6 +128,8 @@ const balancerErrorCodes: Record<string, string> = {
   '600': 'SWAP_FEE_PERCENTAGE_TOO_HIGH',
   '601': 'FLASH_LOAN_FEE_PERCENTAGE_TOO_HIGH',
   '602': 'INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT',
+  '700': 'INVALID_ZERO_MINIMUM_BALANCE',
+  '701': 'UNINITIALIZED_TOKEN',
 };
 
 export class BalancerErrors {

@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "./IIndexPool.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
@@ -42,7 +43,7 @@ contract IndexPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
         return
             _create(
                 abi.encode(
-                    IndexPool.NewPoolParams({
+                    IIndexPool.NewPoolParams({
                         vault: getVault(),
                         name: name,
                         symbol: symbol,
