@@ -7,8 +7,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "../smart/WeightCompression.sol";
 
-import "hardhat/console.sol";
-
 library IndexPoolUtils {
     using FixedPoint for uint256;
     using Math for uint256;
@@ -218,6 +216,7 @@ library IndexPoolUtils {
         uint256 minBalanceTokenIn
     )
         external
+        view
         returns (
             uint256[] memory nextEndWeights,
             uint256[] memory fixedStartWeights,

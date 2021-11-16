@@ -30,7 +30,7 @@ import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted
 //   return (weightDifference / 1e18) * 86400 * 100;
 // };
 
-describe.only('IndexPool', function () {
+describe('IndexPool', function () {
   let owner: SignerWithAddress,
     controller: SignerWithAddress,
     other: SignerWithAddress,
