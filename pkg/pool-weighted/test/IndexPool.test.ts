@@ -533,7 +533,7 @@ describe.only('IndexPool', function () {
         });
       });
 
-      context('when the new token becomes initialized', () => {
+      context.only('when the new token becomes initialized', () => {
         const numberOfSwapsUntilInitialization = 4;
         const weightAdjustmentFactor =
           (4 * fromFp(swapInAmount).toNumber()) / fromFp(defaultUninitializedWeight).toNumber();
@@ -597,19 +597,19 @@ describe.only('IndexPool', function () {
           const limit = 0; // Minimum amount out
           const deadline = MAX_UINT256;
 
-          // do four swaps => will push new token balance over minimum balance
+          // do three swaps => will push new token balance over minimum balance
           for (let i = 0; i < numberOfSwapsUntilInitialization - 1; i++) {
             await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
           }
-          console.log(pool.instance.i);
-          const tx = await pool.reindexTokens(controller, reindexTokens, reindexWeights, minimumBalances);
+
+          const tx = await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
 
           const receipt = await tx.wait();
 
           expectEvent.inIndirectReceiptWithError(receipt, pool.instance.interface, 'WeightChange', {
             tokens: reindexTokens,
             startWeights: expectedNewStartWeightsAfterInit,
-            endWeights: expectedIntermediateEndWeights,
+            endWeights: reindexWeights,
             finalTargetWeights: expectedNewTokenTargetWeights,
           });
         });
