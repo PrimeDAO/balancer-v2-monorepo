@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, utils } from 'ethers';
+import { BigNumber } from 'ethers';
 import { range } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
@@ -11,8 +11,7 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { FundManagement, SingleSwap, SwapKind } from '@balancer-labs/balancer-js';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
 import { calcOutGivenIn } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
-import { resourceUsage } from 'process';
-import { getExpectedWeights, getRandomBaseWeights, setupNewTokens } from './utils/WeightCalculationUtil.test';
+import { getExpectedWeights, getRandomBaseWeights } from './utils/WeightCalculationUtil.test';
 
 const calculateMaxWeightDifference = (oldWeights: BigNumber[], newWeights: BigNumber[]) => {
   let maxWeightDifference = 0;
