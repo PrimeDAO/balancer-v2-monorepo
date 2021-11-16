@@ -551,7 +551,6 @@ describe('IndexPool', function () {
     context('when removing one token', () => {
       const numberNewTokens = 3;
       const numberExistingTokens = 4;
-      const oldTokenIndex = 3;
       const originalWeights = [fp(0.25), fp(0.25), fp(0.25), fp(0.25)];
       const reindexWeights = [fp(0.33333), fp(0.33333), fp(0.33334)];
       const standardMinimumBalance = fp(0.01);
@@ -605,7 +604,6 @@ describe('IndexPool', function () {
 
       it('sets the correct endWeights for all four tokens', async () => {
         const { endWeights } = await pool.getGradualWeightUpdateParams();
-        let i;
         expect(endWeights).to.equalWithError(expectedEndWeights, 0.0001);
       });
 
@@ -662,7 +660,6 @@ describe('IndexPool', function () {
         });
         it('returns the correct amount to the swapper', async () => {
           const defaultFeePercentage = 0.01;
-          const defaultUninitializedWeight = fp(0.01);
           const defaultFeeAmount = pct(swapInAmount, defaultFeePercentage);
           const expectedAmount = Math.floor(
             calcOutGivenIn(

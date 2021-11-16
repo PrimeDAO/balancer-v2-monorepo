@@ -164,7 +164,7 @@ library IndexPoolUtils {
             normalizedSum = normalizedSum.add(desiredWeights[i]);
         }
 
-//        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
+        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
         changeTime = ((diff.mulDown(SECONDS_IN_A_DAY)).divDown(FixedPoint.ONE)) * 100;
     }
 }

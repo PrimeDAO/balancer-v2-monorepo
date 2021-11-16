@@ -175,7 +175,6 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         return secondsElapsed.divDown(totalSeconds);
     }
 
-
     /**
      * @dev When calling _updateWeightsGradually again during an update,
      * reset the start weights to the current weights, if necessary.
@@ -202,8 +201,10 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
             // setting the final target weight here allows us to save gas by writing to storage only once per token
             if (newTokenTargetWeights[i] != 0) {
-                tokenState = tokenState
-                    .insertUint32(newTokenTargetWeights[i].compress32(), _NEW_TOKEN_TARGET_WEIGHT_OFFSET);
+                tokenState = tokenState.insertUint32(
+                    newTokenTargetWeights[i].compress32(),
+                    _NEW_TOKEN_TARGET_WEIGHT_OFFSET
+                );
             }
 
             // write new token state to storage
@@ -286,7 +287,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             (IERC20[] memory oldTokens, , ) = getVault().getPoolTokens(getPoolId());
             uint256 removedTokensLength = oldTokens.length;
             // calculation of removed tokens amount and marking tokens for removal
-            for(uint8 i = 0; i < tokens.length; i++){
+            for (uint8 i = 0; i < tokens.length; i++) {
                 bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
                 if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) != 0) {
                     removedTokensLength--;
@@ -305,10 +306,10 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             allDesiredWeights = new uint256[](len + removedTokensLength);
 
             // Adding removed tokens to the overall token array
-            for(uint8 i = 0; i < oldTokens.length; i++){
+            for (uint8 i = 0; i < oldTokens.length; i++) {
                 bytes32 currentTokenState = _tokenState[IERC20(oldTokens[i])];
                 uint256 removeFlag = currentTokenState.decodeUint5(_REMOVE_FLAG_OFFSET);
-                if(removeFlag != _SAVE_FLAG){
+                if (removeFlag != _SAVE_FLAG) {
                     uint256 weight = _getNormalizedWeight(IERC20(oldTokens[i]));
                     baseWeights[len + removedTokensLength - 1] = weight;
                     allTokens[len + removedTokensLength - 1] = oldTokens[i];
@@ -316,13 +317,18 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                     finalFixedWeights[len + removedTokensLength - 1] = _INITIAL_WEIGHT;
                     removedTokensLength--;
                     // currentToken being removed
-                    _tokenState[IERC20(oldTokens[i])] = currentTokenState.insertUint5(_REMOVE_FLAG, _REMOVE_FLAG_OFFSET);
+                    _tokenState[IERC20(oldTokens[i])] = currentTokenState.insertUint5(
+                        _REMOVE_FLAG,
+                        _REMOVE_FLAG_OFFSET
+                    );
                 } else {
                     // currentToken returned to normal state
-                    _tokenState[IERC20(oldTokens[i])] = currentTokenState.insertUint5(_NORMAL_FLAG, _REMOVE_FLAG_OFFSET);
+                    _tokenState[IERC20(oldTokens[i])] = currentTokenState.insertUint5(
+                        _NORMAL_FLAG,
+                        _REMOVE_FLAG_OFFSET
+                    );
                 }
             }
-
         }
         {
             /*
