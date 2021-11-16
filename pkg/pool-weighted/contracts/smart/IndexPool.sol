@@ -50,8 +50,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
-    // [ 123 bits| 32 bits        |   5 bits |  32 bits   |   64 bits    ]
-    // [ unused  | target weights | decimals | end weight | start weight ]
+    // [ 118 bits | 5 bits | 32 bits        |   5 bits |  32 bits   |   64 bits    ]
+    // [ unused   | remove | target weights | decimals | end weight | start weight ]
     // |MSB                                          LSB|
     mapping(IERC20 => bytes32) private _tokenState;
 
@@ -64,7 +64,11 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
     uint256 private constant _UNINITIALIZED_OFFSET = 101;
     uint256 private constant _NEW_TOKEN_TARGET_WEIGHT_OFFSET = 106;
+    uint256 private constant _REMOVE_FLAG_OFFSET = 138;
 
+    uint256 private constant _NORMAL_FLAG = 0;
+    uint256 private constant _SAVE_FLAG = 1;
+    uint256 private constant _REMOVE_FLAG = 2;
     uint256 private constant _SECONDS_IN_A_DAY = 86400;
 
     constructor(NewPoolParams memory params)
@@ -139,6 +143,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
         uint256 normalizedSum;
         bytes32 tokenState;
         for (uint256 i = 0; i < endWeights.length; i++) {
+            tokenState = _tokenState[IERC20(tokens[i])];
             uint256 endWeight = endWeights[i];
             _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
             tokenState = tokenState
@@ -192,37 +197,51 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
         uint256[] memory minimumBalances
     ) external authenticate {
         InputHelpers.ensureInputLengthMatch(tokens.length, desiredWeights.length, minimumBalances.length);
+        uint256[] memory baseWeights = new uint256[](tokens.length);
+        {
+            (IERC20[] memory oldTokens, , ) = getVault().getPoolTokens(getPoolId());
+            uint8 oldTokensLength = 0;
 
+            for (uint8 i = 0; i < tokens.length; i++) {
+                bytes32 currentTokenState =  _tokenState[IERC20(tokens[i])];
+                if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) != 0) {
+                    baseWeights[i] = _getNormalizedWeight(tokens[i]);
+                    oldTokensLength++;
+                    if(desiredWeights[i] == 0){
+                        _tokenState[IERC20(tokens[i])] = currentTokenState.insertUint5(
+                            _REMOVE_FLAG,
+                            _REMOVE_FLAG_OFFSET
+                            );
+                    }
+                }
+            }
+            require(oldTokensLength == oldTokens.length, "All tokens already in the pool need to be listed");
+        }
         (
-            uint256[] memory fixedWeights,
+            uint256[] memory initialFixedWeights,
+            uint256[] memory finalFixedWeights,
             uint256[] memory newTokenTargetWeights,
-            IERC20[] memory existingTokens,
             IERC20[] memory newTokens
         ) = IndexPoolUtils.assembleReindexParams(tokens, desiredWeights, minimumBalances, _tokenState, minBalances);
 
         getVault().registerTokens(getPoolId(), newTokens, new address[](newTokens.length));
 
-        uint256[] memory baseWeights = new uint256[](existingTokens.length);
 
-        for (uint8 i; i < existingTokens.length; i++) {
-            if (address(existingTokens[i]) != address(0)) {
-                baseWeights[i] = _getNormalizedWeight(existingTokens[i]);
-            }
-        }
+        uint256[] memory finalWeights = IndexPoolUtils.normalizeInterpolated(desiredWeights, finalFixedWeights);
 
         //setting the initial
         _startGradualWeightChange(
             block.timestamp,
             // !! here we make a simplifaction by calculating the time based
             // just looking at the initial startWeights vs finalEndweights
-            block.timestamp + _calcReweighTime(tokens, desiredWeights),
+            block.timestamp + _calcReweighTime(tokens, finalWeights),
             // here we get the starting weights for the new weight change, that should be the weights
             // as applicable immediately after the first weight change
             // e.g. 49.5/49.5/1 after a tokens has been added to a 50/50 pool
-            IndexPoolUtils.normalizeInterpolated(baseWeights, fixedWeights),
+            IndexPoolUtils.normalizeInterpolated(baseWeights, initialFixedWeights),
             // TODO: here we will need the endWeights as long as they apply until the new token becomes initialized
             // e.g. 45/45/10 after new token becomes initialized and aims for fina target weight of 10%
-            IndexPoolUtils.normalizeInterpolated(desiredWeights, fixedWeights),
+            finalWeights,
             tokens,
             newTokenTargetWeights
         );
@@ -240,10 +259,11 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
     ) public override returns (uint256) {
         //cannot swap out uninitialized token
         _require(minBalances[swapRequest.tokenOut] == 0, Errors.UNINITIALIZED_TOKEN);
+        require(_tokenState[swapRequest.tokenIn].decodeUint5(_REMOVE_FLAG_OFFSET) != _REMOVE_FLAG, "Removed token");
 
         // check if uninitialized token will be swapped INTO the pool
         if (minBalances[swapRequest.tokenIn] != 0) {
-            /* 
+            /*
                 check if swap makes token become initialized
             */
             if (currentBalanceTokenIn.add(swapRequest.amount) >= minBalances[swapRequest.tokenIn]) {

@@ -24,7 +24,11 @@ library IndexPoolUtils {
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
     uint256 private constant _UNINITIALIZED_OFFSET = 101;
     uint256 private constant _NEW_TOKEN_TARGET_WEIGHT_OFFSET = 106;
+    uint256 private constant _REMOVE_FLAG_OFFSET = 138;
 
+    uint256 private constant _NORMAL_FLAG = 0;
+    uint256 private constant _SAVE_FLAG = 1;
+    uint256 private constant _REMOVE_FLAG = 2;
     /// @dev Scales baseWeights up/down so that resulting weights array is normalized.
     /// @param _baseWeights Array with weights of tokens. Those that are non-zero need to be scaled.
     /// @param _fixedWeights Array with weights of tokens. Those that are non-zero are fixed.
@@ -132,9 +136,9 @@ library IndexPoolUtils {
     /// @param minimumBalances List of minimum balances per token which would represent 1% of pool value.
     /// @param tokenState The mapping of token states.
     /// @param minBalances The mapping of minimum balances for uninitialzed tokens.
-    /// @return fixedWeights Weights that are fixed and that the other non-fixed weights need to be adjusted for.
+    /// @return initialFixedWeights Weights that are fixed and that the other non-fixed weights need to be adjusted for.
+    /// @return finalFixedWeights Weights that are fixed and that the other non-fixed weights need to be adjusted for.
     /// @return newTokenTargetWeights contains only the final target weights for uninitialized tokens (else zero).
-    /// @return existingTokens contains only the existing pool token addresses (else zero).
     /// @return newTokens contains only the new pool token addresses (no zeros!).
     function assembleReindexParams(
         IERC20[] memory tokens,
@@ -145,9 +149,9 @@ library IndexPoolUtils {
     )
         external
         returns (
-            uint256[] memory fixedWeights,
+            uint256[] memory initialFixedWeights,
+            uint256[] memory finalFixedWeights,
             uint256[] memory newTokenTargetWeights,
-            IERC20[] memory existingTokens,
             IERC20[] memory newTokens
         )
     {
@@ -156,11 +160,11 @@ library IndexPoolUtils {
         */
 
         // the weights that are fixed and that the other tokens need to be adjusted by
-        fixedWeights = new uint256[](tokens.length);
+        initialFixedWeights = new uint256[](tokens.length);
+        finalFixedWeights = new uint256[](tokens.length);
         // we need to store the final desired weight of a new tokensince initially it will be set to 1%
         newTokenTargetWeights = new uint256[](tokens.length);
 
-        existingTokens = new IERC20[](tokens.length);
 
         /*
             this is some mambojambo to get an array that only contains the
@@ -177,7 +181,8 @@ library IndexPoolUtils {
             if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) == 0) {
                 // currentToken is new token
                 // add to fixedWeights (memory)
-                fixedWeights[i] = _INITIAL_WEIGHT;
+                initialFixedWeights[i] = _INITIAL_WEIGHT;
+                finalFixedWeights[i] = _INITIAL_WEIGHT;
                 // mark token to be new to allow for additional logic in _startGradualWeightChange (for gas savings)
                 newTokenTargetWeights[i] = desiredWeights[i];
                 // store minimumBalance (state) also serves as initialization flag
@@ -187,8 +192,9 @@ library IndexPoolUtils {
                 // increment counter for new tokens (memory)
                 newTokenCounter++;
             } else {
-                // currentToken is existing (not new) token
-                existingTokens[i] = tokens[i];
+                if(currentTokenState.decodeUint5(_REMOVE_FLAG_OFFSET) == _REMOVE_FLAG){
+                    finalFixedWeights[i] = _INITIAL_WEIGHT;
+                }
             }
         }
 
