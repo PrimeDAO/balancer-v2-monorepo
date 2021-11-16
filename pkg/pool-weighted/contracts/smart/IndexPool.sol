@@ -182,6 +182,10 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
         );
     }
 
+    /// @dev Identifies new tokens, registers them with pool and initiates weight change.
+    /// @param tokens List of pool tokens.
+    /// @param desiredWeights List of desired weights for tokens.
+    /// @param minimumBalances List of minimum balances per token which would represent 1% of pool value.
     function reindexTokens(
         IERC20[] memory tokens,
         uint256[] memory desiredWeights,

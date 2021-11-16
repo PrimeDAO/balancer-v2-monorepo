@@ -126,6 +126,16 @@ library IndexPoolUtils {
         return FixedPoint.mulUp(_UNINITIALIZED_WEIGHT, incentivizationFactor);
     }
 
+    /// @dev Assembles params to be used for reindex call.
+    /// @param tokens List of pool tokens.
+    /// @param desiredWeights List of desired weights for tokens.
+    /// @param minimumBalances List of minimum balances per token which would represent 1% of pool value.
+    /// @param tokenState The mapping of token states.
+    /// @param minBalances The mapping of minimum balances for uninitialzed tokens.
+    /// @return fixedWeights Weights that are fixed and that the other non-fixed weights need to be adjusted for.
+    /// @return newTokenTargetWeights contains only the final target weights for uninitialized tokens (else zero).
+    /// @return existingTokens contains only the existing pool token addresses (else zero).
+    /// @return newTokens contains only the new pool token addresses (no zeros!).
     function assembleReindexParams(
         IERC20[] memory tokens,
         uint256[] memory desiredWeights,
@@ -207,6 +217,16 @@ library IndexPoolUtils {
             );
     }
 
+    /// @dev Assembles params to be used for the next weight change when a token becomes initialized.
+    /// @param tokens List of pool tokens.
+    /// @param tokenIn Address of uninitialized token that is swapped in.
+    /// @param currentBalanceTokenIn Balance of uninitialized token that is swapped in.
+    /// @param amountIn Amount of uninitialized token that is swapped in.
+    /// @param tokenState The mapping of token states.
+    /// @param minBalanceTokenIn Minimum balance of uninitialized token that is swapped in.
+    /// @return nextEndWeights End weights to be used for new weight change.
+    /// @return fixedStartWeights Used to calculate the start weights for the new weight change.
+    /// @return newTokenTargetWeights Used to remember the final target weigths of any uninitialized tokens.
     function assembleInitializationParams(
         IERC20[] memory tokens,
         IERC20 tokenIn,
@@ -256,6 +276,10 @@ library IndexPoolUtils {
         nextEndWeights = normalizeInterpolated(getOriginalReindexTargets(tokens, tokenState), fixedEndWeights);
     }
 
+    /// @dev Interpolates back to the initial reindex target weights (no need to store - gas saving!)
+    /// @param tokens List of pool tokens.
+    /// @param tokenState The mapping of token states.
+    /// @return originalReindexTargets Initial reindex target weights.
     function getOriginalReindexTargets(IERC20[] memory tokens, mapping(IERC20 => bytes32) storage tokenState)
         internal
         view
