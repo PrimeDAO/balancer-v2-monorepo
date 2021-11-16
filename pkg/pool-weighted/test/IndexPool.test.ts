@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 import { range } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
@@ -11,6 +11,11 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { FundManagement, SingleSwap, SwapKind } from '@balancer-labs/balancer-js';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
 import { calcOutGivenIn } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
+import { resourceUsage } from 'process';
+import { getExpectedWeights, setupNewTokens } from './utils/WeightCalculationUtil.test';
+// import {}
+
+// const HUNDRED_PERCENT = BigNumber.from(10).pow(18);
 
 const calculateMaxWeightDifference = (oldWeights: BigNumber[], newWeights: BigNumber[]) => {
   let maxWeightDifference = 0;
@@ -29,6 +34,70 @@ const getTimeForWeightChange = (weightDifference: number) => {
   return (weightDifference / 1e18) * 86400 * 100;
 };
 
+const getExpectedStartWeights = (originalWeights: BigNumber[], numberNewTokens: number) => {
+  let sum;
+
+  sum = fp(0);
+  const minimumBalance = 0.01;
+  const adjustmentAmount = fp(minimumBalance).mul(numberNewTokens).div(originalWeights.length);
+
+  console.log('num tokens = ', numberNewTokens);
+  console.log('adjustment = ', adjustmentAmount.toString());
+
+  for (let i = 0; i < originalWeights.length; i++) {
+    console.log('og weigh before = ', originalWeights[i].toString());
+
+    originalWeights[i] = originalWeights[i].sub(adjustmentAmount);
+
+    console.log('og weigh after = ', originalWeights[i].toString());
+
+    sum = sum.add(originalWeights[i]);
+  }
+  console.log('sum =', sum.toString());
+  const total = sum.add(fp(minimumBalance).mul(numberNewTokens));
+  console.log('total = ', total.toString());
+
+  return [...originalWeights, ...getNewTokensWeightArray(numberNewTokens, minimumBalance)];
+};
+
+const getNewTokensWeightArray = (numberNewTokens: number, newTokenTargetWeight: number) => {
+  const newTokenWeightsArray = new Array(numberNewTokens).fill(newTokenTargetWeight);
+  return newTokenWeightsArray;
+};
+
+const getDesiredWeights = (numberNewTokens: number, newTokenTargetWeight: number, numberExistingTokens: number) => {
+  const adjustedExistingTokenWeights = getAdjustedExistingTokenWeights(
+    numberNewTokens,
+    newTokenTargetWeight,
+    numberExistingTokens
+  );
+  return [...adjustedExistingTokenWeights, ...getNewTokensWeightArray(numberNewTokens, newTokenTargetWeight)];
+};
+
+const getAdjustedExistingTokenWeights = (
+  numberNewTokens: number,
+  newTokenTargetWeight: number,
+  numberExistingTokens: number
+) => {
+  let adjustedTokenWeights;
+  // get combined weight of existing tokens when new once would be added
+  const orginalPoolWeightsSum = Number((1 - numberNewTokens * newTokenTargetWeight).toFixed(3));
+  // get single weight of exiting tokens after adjustment
+  const singleOriginalPoolWeight = Number((orginalPoolWeightsSum / numberExistingTokens).toFixed(3));
+  // check if sum is still a round number due to floats division
+  const poolWeightSumCheck = Number((numberExistingTokens * singleOriginalPoolWeight).toFixed(3));
+  // correct one of the weights if poolWeightSumCheck is different because of float devision
+  if (poolWeightSumCheck != orginalPoolWeightsSum) {
+    const singleWeightPlusDecimalCorrection =
+      Number((orginalPoolWeightsSum - poolWeightSumCheck).toFixed(3)) + singleOriginalPoolWeight;
+    adjustedTokenWeights = Array(numberExistingTokens - 1).fill(singleOriginalPoolWeight);
+    adjustedTokenWeights.push(singleWeightPlusDecimalCorrection);
+  } else {
+    adjustedTokenWeights = Array(numberExistingTokens).fill(singleOriginalPoolWeight);
+  }
+  return adjustedTokenWeights;
+};
+
 describe('IndexPool', function () {
   let owner: SignerWithAddress,
     controller: SignerWithAddress,
@@ -42,11 +111,12 @@ describe('IndexPool', function () {
   });
 
   const MAX_TOKENS = 4;
+  const MAX_TOKENS_50 = 50;
 
   let allTokens: TokenList, tokens: TokenList;
 
   sharedBeforeEach('deploy tokens', async () => {
-    allTokens = await TokenList.create(MAX_TOKENS + 1, { sorted: true });
+    allTokens = await TokenList.create(MAX_TOKENS_50 + 1, { sorted: true });
     tokens = allTokens.subset(4);
     await tokens.mint({ to: [other], amount: fp(200) });
   });
@@ -393,7 +463,7 @@ describe('IndexPool', function () {
       const oldTokenIndex = 0;
       const newTokenTargetWeight = fp(0.1);
       const originalWeights = [fp(0.4), fp(0.3), fp(0.3)];
-      const reindexWeights = [fp(0.5), fp(0.2), fp(0.2), newTokenTargetWeight];
+      const desiredWeights = [fp(0.5), fp(0.2), fp(0.2), newTokenTargetWeight];
       const standardMinimumBalance = fp(0.01);
       const swapInAmount = fp(0.003);
       const initialTokenAmountsInPool = fp(1);
@@ -429,7 +499,7 @@ describe('IndexPool', function () {
       sharedBeforeEach('call reindexTokens function', async () => {
         reindexTokens = allTokens.subset(numberExistingTokens + numberNewTokens).tokens.map((token) => token.address);
         poolId = await pool.getPoolId();
-        await pool.reindexTokens(controller, reindexTokens, reindexWeights, minimumBalances);
+        await pool.reindexTokens(controller, reindexTokens, desiredWeights, minimumBalances);
       });
 
       it('adds the new token to the vault registry', async () => {
@@ -451,7 +521,7 @@ describe('IndexPool', function () {
       });
 
       it('sets the correct rebalancing period', async () => {
-        const maxWeightDifference = calculateMaxWeightDifference(reindexWeights, [...originalWeights, fp(0)]);
+        const maxWeightDifference = calculateMaxWeightDifference(desiredWeights, [...originalWeights, fp(0)]);
         const time = getTimeForWeightChange(maxWeightDifference);
         const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
 
@@ -546,6 +616,134 @@ describe('IndexPool', function () {
           expect(afterSwapTokenBalance).to.equalWithError(expectedAmount, 0.001);
         });
       });
+    });
+    context.only('when adding multible tokens at once', () => {
+      const MAX_TOKENS_TO_ADD = 15;
+      const numberExistingTokens = 4;
+      const originalWeights = [0.2, 0.2, 0.3, 0.3];
+      const originalWeightsBN = originalWeights.map((w) => fp(w));
+      const initialTokenAmountsInPool = fp(1);
+      const standardMinimumBalance = fp(0.01);
+      const newTokenTargetWeight = 0.05;
+
+      let reindexTokens: string[],
+        poolId: string,
+        minimumBalances: BigNumber[],
+        desiredWeights: BigNumber[],
+        expectedEndWeights: BigNumber[],
+        expectedStartWeights: BigNumber[];
+
+      for (const numberNewTokens of range(2, MAX_TOKENS_TO_ADD)) {
+        context(`call reindexTokens with ${numberNewTokens} new tokens`, () => {
+          sharedBeforeEach('deploy pool', async () => {
+            vault = await Vault.create();
+            const params = {
+              tokens: allTokens.subset(numberExistingTokens),
+              weights: originalWeightsBN,
+              owner: controller,
+              poolType: WeightedPoolType.INDEX_POOL,
+              fromFactory: true,
+              vault,
+            };
+            pool = await WeightedPool.create(params);
+          });
+          sharedBeforeEach('creating weights and balances', async () => {
+            minimumBalances = new Array(numberExistingTokens + numberNewTokens).fill(standardMinimumBalance);
+            const temp: number[] = getDesiredWeights(numberNewTokens, newTokenTargetWeight, numberExistingTokens);
+            desiredWeights = temp.map((w) => fp(w));
+
+            // const { baseWeights, fixedWeights } = setupNewTokens(numberExistingTokens, numberNewTokens);
+            // desiredWeights = baseWeights.map(w => fp(w));
+            // const newTokenArray = getNewTokensWeightArray(numberNewTokens, 0)
+            const baseWeightsArray: number[] = [...originalWeights, ...getNewTokensWeightArray(numberNewTokens, 0)];
+            // // const newTokenArrayFixed = getNewTokensWeightArray(numberNewTokens, 0.01);
+            const fixedWeightArray: number[] = [
+              ...getNewTokensWeightArray(numberExistingTokens, 0),
+              ...getNewTokensWeightArray(numberNewTokens, 0.01),
+            ];
+            // console.log(baseWeightsArray);
+            // console.log(fixedWeightArray);
+
+            // let baseWeightsArray = new Array(numberExistingTokens + numberNewTokens);
+
+            // expectedStartWeights = getExpectedWeights(originalWeights);
+
+            expectedStartWeights = getExpectedWeights(baseWeightsArray, fixedWeightArray);
+            // const test1: number[] = [...temp, ...getNewTokensWeightArray(numberNewTokens, 0)];
+            expectedEndWeights = getExpectedWeights(temp, fixedWeightArray);
+          });
+
+          sharedBeforeEach('join pool (aka fund liquidity)', async () => {
+            await tokens.mint({ to: owner, amount: fp(100) });
+            await tokens.approve({ from: owner, to: await pool.getVault() });
+            await pool.init({
+              from: owner,
+              initialBalances: new Array(numberExistingTokens).fill(initialTokenAmountsInPool),
+            });
+          });
+
+          sharedBeforeEach('call reindexTokens function', async () => {
+            reindexTokens = allTokens
+              .subset(numberExistingTokens + numberNewTokens)
+              .tokens.map((token) => token.address);
+            poolId = await pool.getPoolId();
+
+            await pool.reindexTokens(controller, reindexTokens, desiredWeights, minimumBalances);
+          });
+
+          it('adds the new tokens to the vault registry', async () => {
+            const { tokens: tokensFromVault } = await vault.getPoolTokens(poolId);
+
+            expect(tokensFromVault).to.have.members(reindexTokens);
+          });
+
+          it(`sets the correct startWeights for all ${numberNewTokens} tokens`, async () => {
+            const { startWeights } = await pool.getGradualWeightUpdateParams();
+
+            expect(startWeights).to.equalWithError(expectedStartWeights, 0.0001);
+          });
+
+          it(`sets the correct endWeights for all ${numberNewTokens} tokens`, async () => {
+            const { endWeights } = await pool.getGradualWeightUpdateParams();
+
+            expect(endWeights).to.equalWithError(expectedEndWeights, 0.0001);
+          });
+
+          it('sets the correct rebalancing period', async () => {
+            const maxWeightDifference = calculateMaxWeightDifference(desiredWeights, [...originalWeightsBN, fp(0)]);
+            const time = getTimeForWeightChange(maxWeightDifference);
+            const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
+
+            expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
+          });
+
+          it('sets the correct minimum balance for all the new token', async () => {
+            for (let i = numberExistingTokens; i < reindexTokens.length; i++) {
+              let minimumBalance = await pool.minBalances(reindexTokens[i]);
+
+              expect(minimumBalance).to.equalWithError(standardMinimumBalance, 0.0001);
+            }
+          });
+
+          it('does not set a minimum balance for existing tokens', async () => {
+            for (let i = 0; i < numberExistingTokens; i++) {
+              let tokenBalance = await pool.minBalances(reindexTokens[i]);
+
+              expect(tokenBalance).to.equal(0);
+            }
+          });
+
+          it('stores the final target weights for the new tokens', async () => {
+            const expectedNewTokenTargetWeights = [
+              ...getNewTokensWeightArray(numberExistingTokens, 0).map((w) => fp(w)),
+              ...getNewTokensWeightArray(numberNewTokens, newTokenTargetWeight).map((w) => fp(w)),
+            ];
+            const { newTokenTargetWeights } = await pool.getGradualWeightUpdateParams();
+
+            expect(newTokenTargetWeights).to.equalWithError(expectedNewTokenTargetWeights, 0.0001);
+          });
+        });
+      }
     });
   });
 });
