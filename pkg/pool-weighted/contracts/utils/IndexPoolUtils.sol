@@ -29,6 +29,7 @@ library IndexPoolUtils {
     uint256 private constant _NORMAL_FLAG = 0;
     uint256 private constant _SAVE_FLAG = 1;
     uint256 private constant _REMOVE_FLAG = 2;
+
     /// @dev Scales baseWeights up/down so that resulting weights array is normalized.
     /// @param _baseWeights Array with weights of tokens. Those that are non-zero need to be scaled.
     /// @param _fixedWeights Array with weights of tokens. Those that are non-zero are fixed.
@@ -165,7 +166,6 @@ library IndexPoolUtils {
         // we need to store the final desired weight of a new tokensince initially it will be set to 1%
         newTokenTargetWeights = new uint256[](tokens.length);
 
-
         /*
             this is some mambojambo to get an array that only contains the
             addresses of the new tokens
@@ -192,7 +192,7 @@ library IndexPoolUtils {
                 // increment counter for new tokens (memory)
                 newTokenCounter++;
             } else {
-                if(currentTokenState.decodeUint5(_REMOVE_FLAG_OFFSET) == _REMOVE_FLAG){
+                if (currentTokenState.decodeUint5(_REMOVE_FLAG_OFFSET) == _REMOVE_FLAG) {
                     finalFixedWeights[i] = _INITIAL_WEIGHT;
                 }
             }

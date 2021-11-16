@@ -203,15 +203,15 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
             uint8 oldTokensLength = 0;
 
             for (uint8 i = 0; i < tokens.length; i++) {
-                bytes32 currentTokenState =  _tokenState[IERC20(tokens[i])];
+                bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
                 if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) != 0) {
                     baseWeights[i] = _getNormalizedWeight(tokens[i]);
                     oldTokensLength++;
-                    if(desiredWeights[i] == 0){
+                    if (desiredWeights[i] == 0) {
                         _tokenState[IERC20(tokens[i])] = currentTokenState.insertUint5(
                             _REMOVE_FLAG,
                             _REMOVE_FLAG_OFFSET
-                            );
+                        );
                     }
                 }
             }
@@ -225,7 +225,6 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
         ) = IndexPoolUtils.assembleReindexParams(tokens, desiredWeights, minimumBalances, _tokenState, minBalances);
 
         getVault().registerTokens(getPoolId(), newTokens, new address[](newTokens.length));
-
 
         uint256[] memory finalWeights = IndexPoolUtils.normalizeInterpolated(desiredWeights, finalFixedWeights);
 
