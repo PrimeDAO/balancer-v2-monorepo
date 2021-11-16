@@ -50,8 +50,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
-    // [ 118 bits | 5 bits | 32 bits        |   5 bits |  32 bits   |   64 bits    ]
-    // [ unused   | remove | target weights | decimals | end weight | start weight ]
+    // [ 118 bits | 5 bits | 5 bits | 32 bits        |   5 bits |  32 bits   |   64 bits    ]
+    // [ unused   | checked| remove | target weights | decimals | end weight | start weight ]
     // |MSB                                          LSB|
     mapping(IERC20 => bytes32) private _tokenState;
 
@@ -65,10 +65,14 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
     uint256 private constant _UNINITIALIZED_OFFSET = 101;
     uint256 private constant _NEW_TOKEN_TARGET_WEIGHT_OFFSET = 106;
     uint256 private constant _REMOVE_FLAG_OFFSET = 138;
+    uint256 private constant _CHECKED_OFFSET = 143;
 
     uint256 private constant _NORMAL_FLAG = 0;
     uint256 private constant _SAVE_FLAG = 1;
     uint256 private constant _REMOVE_FLAG = 2;
+
+    uint256 private constant _CHECKED = 1;
+    uint256 private constant _UNCHECKED = 0;
     uint256 private constant _SECONDS_IN_A_DAY = 86400;
 
     constructor(NewPoolParams memory params)
@@ -143,7 +147,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
         uint256 normalizedSum;
         bytes32 tokenState;
         for (uint256 i = 0; i < endWeights.length; i++) {
-            tokenState = _tokenState[IERC20(tokens[i])];
+            tokenState = _tokenState[IERC20(tokens[i])].insertUint5(_UNCHECKED, _CHECKED_OFFSET);
             uint256 endWeight = endWeights[i];
             _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
             tokenState = tokenState
@@ -201,9 +205,13 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
         {
             (IERC20[] memory oldTokens, , ) = getVault().getPoolTokens(getPoolId());
             uint8 oldTokensLength = 0;
-
             for (uint8 i = 0; i < tokens.length; i++) {
                 bytes32 currentTokenState = _tokenState[IERC20(tokens[i])];
+                require(currentTokenState.decodeUint5(_CHECKED_OFFSET) != _CHECKED, "Duplicate token address provided");
+                _tokenState[IERC20(tokens[i])] = currentTokenState.insertUint5(
+                    _CHECKED,
+                    _CHECKED_OFFSET
+                );
                 if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) != 0) {
                     baseWeights[i] = _getNormalizedWeight(tokens[i]);
                     oldTokensLength++;
