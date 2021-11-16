@@ -122,6 +122,51 @@ export function inIndirectReceipt(
   return event;
 }
 
+export function inIndirectReceiptWithError(
+  receipt: ContractReceipt,
+  emitter: Interface,
+  eventName: string,
+  eventArgs = {}
+): any {
+  const decodedEvents = receipt.logs
+    .map((log) => {
+      try {
+        return emitter.parseLog(log);
+      } catch {
+        return undefined;
+      }
+    })
+    .filter((e): e is LogDescription => e !== undefined);
+
+  const expectedEvents = decodedEvents.filter((event) => event.name === eventName);
+  expect(expectedEvents.length > 0).to.equal(true, `No '${eventName}' events found`);
+
+  const exceptions: Array<string> = [];
+  const event = expectedEvents.find(function (e) {
+    for (const [k, v] of Object.entries(eventArgs)) {
+      try {
+        if (e.args == undefined) {
+          throw new Error('Event has no arguments');
+        }
+
+        containsWithError(e.args, k, v);
+      } catch (error) {
+        exceptions.push(error);
+        return false;
+      }
+    }
+    return true;
+  });
+
+  if (event === undefined) {
+    // Each event entry may have failed to match for different reasons,
+    // throw the first one
+    throw exceptions[0];
+  }
+
+  return event;
+}
+
 export function notEmitted(receipt: ContractReceipt, eventName: string): void {
   if (receipt.events != undefined) {
     const events = receipt.events.filter((e) => e.event === eventName);

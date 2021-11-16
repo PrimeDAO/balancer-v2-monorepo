@@ -577,7 +577,7 @@ describe.only('IndexPool', function () {
           expect(minimumBalance).to.equal(0);
         });
 
-        it('emits an event that contains the correct state change params', async () => {
+        it.only('emits an event that contains the correct state change params', async () => {
           const expectedNewTokenTargetWeights = new Array(numberExistingTokens + numberNewTokens).fill(fp(0));
 
           const singleSwap = {
@@ -601,14 +601,14 @@ describe.only('IndexPool', function () {
           for (let i = 0; i < numberOfSwapsUntilInitialization - 1; i++) {
             await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
           }
-
+          console.log(pool.instance.i);
           const tx = await pool.reindexTokens(controller, reindexTokens, reindexWeights, minimumBalances);
 
           const receipt = await tx.wait();
 
-          expectEvent.inReceiptWithError(receipt, 'WeightChange', {
+          expectEvent.inIndirectReceiptWithError(receipt, pool.instance.interface, 'WeightChange', {
             tokens: reindexTokens,
-            startWeights: expectedNewStartWeights,
+            startWeights: expectedNewStartWeightsAfterInit,
             endWeights: expectedIntermediateEndWeights,
             finalTargetWeights: expectedNewTokenTargetWeights,
           });
