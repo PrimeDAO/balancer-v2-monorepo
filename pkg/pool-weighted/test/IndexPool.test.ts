@@ -54,7 +54,7 @@ describe('IndexPool', function () {
     await tokens.mint({ to: [other], amount: fp(200) });
   });
 
-  describe.only('standalone deployment', () => {
+  describe('standalone deployment', () => {
     context('with invalid creation parameters', () => {
       const tooManyWeights = [fp(0.3), fp(0.25), fp(0.3), fp(0.1), fp(0.05)];
 
@@ -808,8 +808,10 @@ describe('IndexPool', function () {
         await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
       });
 
-      it('sends the residual amount of REMOVE_TOKEN ', () => {
-        console.log(pool);
+      it.only('sends the residual amount of REMOVE_TOKEN to tokenHandler', async () => {
+        const tokenHandlerBalance = await allTokens.third.balanceOf(tokenHandler);
+
+        expect(tokenHandlerBalance).to.be.gt(0);
       });
     });
   });
