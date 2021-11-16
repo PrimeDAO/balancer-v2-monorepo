@@ -276,25 +276,34 @@ describe.only('IndexPool', function () {
         );
       });
     });
-    //   context('with valid inputs', () => {
-    //     const desiredWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
-    //     sharedBeforeEach('deploy pool', async () => {
-    //       await pool.reweighTokens(
-    //         allTokens.subset(4).tokens.map((token) => token.address),
-    //         desiredWeights
-    //       );
-    //     });
-    //     it('sets the correct endWeights', async () => {
-    //       const { endWeights } = await pool.getGradualWeightUpdateParams();
-    //       expect(endWeights).to.equalWithError(desiredWeights, 0.0001);
-    //     });
-    //     it('sets the correct rebalancing period', async () => {
-    //       const maxWeightDifference = calculateMaxWeightDifference(desiredWeights, weights);
-    //       const time = getTimeForWeightChange(maxWeightDifference);
-    //       const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
-    //       expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
-    //     });
-    //   });
+
+    context('with valid inputs', () => {
+      const desiredWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
+
+      it('emits an event that contains the weight state change params', async () => {
+        const tx = await pool.reweighTokens(
+          controller,
+          allTokens.subset(4).tokens.map((token) => token.address),
+          desiredWeights
+        );
+
+        const receipt = await tx.wait();
+
+        expectEvent.inReceiptWithError(receipt, 'WeightChange', {
+          tokens: allTokens.subset(4).tokens.map((token) => token.address),
+          startWeights: weights,
+          endWeights: desiredWeights,
+          finalTargetWeights: [fp(0), fp(0), fp(0), fp(0)],
+        });
+      });
+
+      // it('sets the correct rebalancing period', async () => {
+      //   const maxWeightDifference = calculateMaxWeightDifference(desiredWeights, weights);
+      //   const time = getTimeForWeightChange(maxWeightDifference);
+      //   const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
+      //   expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
+      // });
+    });
   });
 
   describe('#reindexTokens', () => {
