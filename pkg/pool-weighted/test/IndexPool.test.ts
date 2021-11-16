@@ -447,11 +447,11 @@ describe('IndexPool', function () {
       it('sets the correct endWeights for all four tokens', async () => {
         const { endWeights } = await pool.getGradualWeightUpdateParams();
 
-        expect(endWeights).to.equalWithError(expectedEndWeights, 0.0001);
+        expect(endWeights).to.equalWithError(expectedEndWeights, 0.01);
       });
 
       it('sets the correct rebalancing period', async () => {
-        const maxWeightDifference = calculateMaxWeightDifference(reindexWeights, [...originalWeights, fp(0)]);
+        const maxWeightDifference = calculateMaxWeightDifference(expectedStartWeights, expectedEndWeights);
         const time = getTimeForWeightChange(maxWeightDifference);
         const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
 
@@ -552,15 +552,15 @@ describe('IndexPool', function () {
       const numberNewTokens = 3;
       const numberExistingTokens = 4;
       const oldTokenIndex = 3;
-      const originalWeights = [fp(0.1), fp(0.1), fp(0.3), fp(0.5)];
-      const reindexWeights = [fp(0.5), fp(0.2), fp(0.3)];
+      const originalWeights = [fp(0.25), fp(0.25), fp(0.25), fp(0.25)];
+      const reindexWeights = [fp(0.33333), fp(0.33333), fp(0.33334)];
       const standardMinimumBalance = fp(0.01);
       const swapInAmount = fp(0.003);
       const initialTokenAmountsInPool = fp(1);
       const minimumBalances = new Array(numberNewTokens).fill(standardMinimumBalance);
 
-      const expectedStartWeights = [fp(0.2), fp(0.2), fp(0.6), fp(0.5)];
-      const expectedEndWeights = [fp(0.5), fp(0.2), fp(0.3), fp(0.01)];
+      const expectedStartWeights = [fp(0.25), fp(0.25), fp(0.25), fp(0.25)];
+      const expectedEndWeights = [fp(0.32999), fp(0.32999), fp(0.330006), fp(0.01)];
 
       let reindexTokens: string[], poolId: string;
 
@@ -592,7 +592,7 @@ describe('IndexPool', function () {
         await pool.reindexTokens(owner, reindexTokens, reindexWeights, minimumBalances);
       });
 
-      it('adds the new token to the vault registry', async () => {
+      it('removed token remains in the vault registry', async () => {
         const { tokens: tokensFromVault } = await vault.getPoolTokens(poolId);
         const tokens = allTokens.subset(numberExistingTokens).tokens.map((token) => token.address);
         expect(tokensFromVault).to.have.members(tokens);
@@ -606,17 +606,11 @@ describe('IndexPool', function () {
       it('sets the correct endWeights for all four tokens', async () => {
         const { endWeights } = await pool.getGradualWeightUpdateParams();
         let i;
-        for (i in endWeights) {
-          console.log(Number(endWeights[i]));
-        }
         expect(endWeights).to.equalWithError(expectedEndWeights, 0.0001);
       });
 
       it('sets the correct rebalancing period', async () => {
-        const maxWeightDifference = calculateMaxWeightDifference(reindexWeights.concat([fp(0.01)]), [
-          ...originalWeights,
-          fp(0),
-        ]);
+        const maxWeightDifference = calculateMaxWeightDifference(expectedStartWeights, expectedEndWeights);
         const time = getTimeForWeightChange(maxWeightDifference);
         const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
 
@@ -658,7 +652,7 @@ describe('IndexPool', function () {
           const funds = {
             sender: owner.address,
             fromInternalBalance: false,
-            recipient: other.address,
+            recipient: randomDude.address,
             toInternalBalance: false,
           };
           const limit = 0; // Minimum amount out
@@ -666,25 +660,23 @@ describe('IndexPool', function () {
 
           await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
         });
-        // it('returns the correct amount to the swapper', async () => {
-        //   const defaultFeePercentage = 0.01;
-        //   const defaultUninitializedWeight = fp(0.01);
-        //   const defaultFeeAmount = pct(swapInAmount, defaultFeePercentage);
-        //   const expectedAmount = Math.floor(
-        //     calcOutGivenIn(
-        //       standardMinimumBalance,
-        //       defaultUninitializedWeight,
-        //       initialTokenAmountsInPool,
-        //       expectedStartWeights[oldTokenIndex],
-        //       swapInAmount.sub(defaultFeeAmount)
-        //     ).toNumber()
-        //   );
-        //
-        //   const afterSwapTokenBalance = await allTokens.fourth.balanceOf(other);
-        //   console.log(afterSwapTokenBalance);
-        //
-        //   expect(afterSwapTokenBalance).to.equalWithError(expectedAmount, 0.001);
-        // });
+        it('returns the correct amount to the swapper', async () => {
+          const defaultFeePercentage = 0.01;
+          const defaultUninitializedWeight = fp(0.01);
+          const defaultFeeAmount = pct(swapInAmount, defaultFeePercentage);
+          const expectedAmount = Math.floor(
+            calcOutGivenIn(
+              initialTokenAmountsInPool,
+              expectedStartWeights[0],
+              initialTokenAmountsInPool,
+              expectedStartWeights[3],
+              swapInAmount.sub(defaultFeeAmount)
+            ).toNumber()
+          );
+
+          const afterSwapTokenBalance = await allTokens.fourth.balanceOf(randomDude);
+          expect(afterSwapTokenBalance).to.equalWithError(expectedAmount, 0.001);
+        });
       });
 
       context('when swapping removed token into the pool', () => {

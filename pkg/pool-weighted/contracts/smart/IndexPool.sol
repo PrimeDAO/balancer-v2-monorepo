@@ -193,6 +193,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
 
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
+            tokenState = _tokenState[IERC20(tokens[i])];
             _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
             tokenState = tokenState
                 .insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET)
@@ -202,8 +203,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             // setting the final target weight here allows us to save gas by writing to storage only once per token
             if (newTokenTargetWeights[i] != 0) {
                 tokenState = tokenState
-                    .insertUint32(newTokenTargetWeights[i].compress32(), _NEW_TOKEN_TARGET_WEIGHT_OFFSET)
-                    .insertUint5(_NORMAL_FLAG, _REMOVE_FLAG_OFFSET);
+                    .insertUint32(newTokenTargetWeights[i].compress32(), _NEW_TOKEN_TARGET_WEIGHT_OFFSET);
             }
 
             // write new token state to storage
@@ -273,7 +273,9 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         // the initial weights in the pool (here a new token has a weight of zero)
         uint256[] memory baseWeights;
         // the weights that are fixed and that the other tokens need to be adjusted by
-        uint256[] memory fixedWeights;
+        uint256[] memory initialFixedWeights;
+        // the weights that are fixed and that the other tokens need to be adjusted by
+        uint256[] memory finalFixedWeights;
         // we need to store the final desired weight of a new tokensince initially it will be set to 1%
         uint256[] memory newTokenTargetWeights;
         // we need to store the final desired weight of a new tokensince initially it will be set to 1%
@@ -296,7 +298,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             // token arrays initialization
             uint256 len = tokens.length;
             baseWeights = new uint256[](len + removedTokensLength);
-            fixedWeights = new uint256[](len + removedTokensLength);
+            finalFixedWeights = new uint256[](len + removedTokensLength);
+            initialFixedWeights = new uint256[](len + removedTokensLength);
             newTokenTargetWeights = new uint256[](len + removedTokensLength);
             allTokens = new IERC20[](len + removedTokensLength);
             allDesiredWeights = new uint256[](len + removedTokensLength);
@@ -309,7 +312,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                     uint256 weight = _getNormalizedWeight(IERC20(oldTokens[i]));
                     baseWeights[len + removedTokensLength - 1] = weight;
                     allTokens[len + removedTokensLength - 1] = oldTokens[i];
-                    allDesiredWeights[len + removedTokensLength - 1] = _INITIAL_WEIGHT;
+                    allDesiredWeights[len + removedTokensLength - 1] = 0;
+                    finalFixedWeights[len + removedTokensLength - 1] = _INITIAL_WEIGHT;
                     removedTokensLength--;
                     // currentToken being removed
                     _tokenState[IERC20(oldTokens[i])] = currentTokenState.insertUint5(_REMOVE_FLAG, _REMOVE_FLAG_OFFSET);
@@ -337,7 +341,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
                 if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) == 0) {
                     // currentToken is new token
                     // add to fixedWeights (memory)
-                    fixedWeights[i] = _INITIAL_WEIGHT;
+                    initialFixedWeights[i] = _INITIAL_WEIGHT;
+                    finalFixedWeights[i] = _INITIAL_WEIGHT;
                     // mark token to be new to allow for additional logic in _startGradualWeightChange (for gas savings)
                     newTokenTargetWeights[i] = desiredWeights[i];
                     // store minimumBalance (state) also serves as initialization flag
@@ -356,7 +361,9 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
         }
 
         // variable to store the time it will take to reweight the pool
-        uint256 changeTimeDiff = IndexPoolUtils.calcReweighTime(allTokens, allDesiredWeights, _getNormalizedWeights());
+        uint256[] memory initialWeights = IndexPoolUtils.normalizeInterpolated(baseWeights, initialFixedWeights);
+        uint256[] memory desiredWeights = IndexPoolUtils.normalizeInterpolated(allDesiredWeights, finalFixedWeights);
+        uint256 changeTimeDiff = IndexPoolUtils.calcReweighTime(allTokens, desiredWeights, initialWeights);
         //setting the initial
         _startGradualWeightChange(
             block.timestamp,
@@ -366,10 +373,10 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard {
             // here we get the starting weights for the new weight change, that should be the weights
             // as applicable immediately after the first weight change
             // e.g. 49.5/49.5/1 after a tokens has been added to a 50/50 pool
-            IndexPoolUtils.normalizeInterpolated(baseWeights, fixedWeights),
+            initialWeights,
             // TODO: here we will need the endWeights as long as they apply until the new token becomes initialized
             // e.g. 45/45/10 after new token becomes initialized and aims for fina target weight of 10%
-            IndexPoolUtils.normalizeInterpolated(allDesiredWeights, fixedWeights),
+            desiredWeights,
             allTokens,
             newTokenTargetWeights
         );
