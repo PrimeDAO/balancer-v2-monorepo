@@ -750,7 +750,7 @@ describe('IndexPool', function () {
     context('when adding multible tokens at once', () => {
       const MAX_TOKENS_TO_ADD = 15;
       const numberExistingTokens = 4;
-      const originalWeights = getRandomBaseWeights(numberExistingTokens);
+      const originalWeights = [0.2, 0.2, 0.3, 0.3];
       const originalWeightsBN = originalWeights.map((w) => fp(w));
       const initialTokenAmountsInPool = fp(1);
       const standardMinimumBalance = fp(0.01);
