@@ -223,4 +223,8 @@ library Errors {
     uint256 internal constant SWAP_FEE_PERCENTAGE_TOO_HIGH = 600;
     uint256 internal constant FLASH_LOAN_FEE_PERCENTAGE_TOO_HIGH = 601;
     uint256 internal constant INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT = 602;
+
+    // Index
+    uint256 internal constant INVALID_ZERO_MINIMUM_BALANCE = 700;
+    uint256 internal constant UNINITIALIZED_TOKEN = 701;
 }
