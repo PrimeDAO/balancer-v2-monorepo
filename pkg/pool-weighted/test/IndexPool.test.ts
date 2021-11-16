@@ -246,7 +246,7 @@ describe.only('IndexPool', function () {
     });
   });
 
-  describe.only('#reweighTokens', () => {
+  describe('#reweighTokens', () => {
     sharedBeforeEach('deploy pool', async () => {
       const params = {
         tokens,
@@ -535,7 +535,7 @@ describe.only('IndexPool', function () {
         });
       });
 
-      context('when the new token becomes initialized', () => {
+      context.only('when the new token becomes initialized', () => {
         const numberOfSwapsUntilInitialization = 4;
         const weightAdjustmentFactor =
           (4 * fromFp(swapInAmount).toNumber()) / fromFp(defaultUninitializedWeight).toNumber();

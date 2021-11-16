@@ -5,6 +5,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "../smart/WeightCompression.sol";
 
 import "hardhat/console.sol";
 
@@ -12,6 +13,7 @@ library IndexPoolUtils {
     using FixedPoint for uint256;
     using Math for uint256;
     using WordCodec for bytes32;
+    using WeightCompression for uint256;
 
     uint256 internal constant _PRECISION = 18;
     uint256 internal constant _HUNDRED_PERCENT = 10**_PRECISION;
@@ -30,7 +32,7 @@ library IndexPoolUtils {
     /// @param _fixedWeights Array with weights of tokens. Those that are non-zero are fixed.
     /// @return Array with scaled and fixed weights of tokens. Should add up to one.
     function normalizeInterpolated(uint256[] memory _baseWeights, uint256[] memory _fixedWeights)
-        external
+        public
         pure
         returns (uint256[] memory)
     {
@@ -199,11 +201,76 @@ library IndexPoolUtils {
         uint256 _balanceIn,
         uint256 _minimumBalance,
         uint256 _amount
-    ) internal pure returns (uint256) {
+    ) public pure returns (uint256) {
         return
             FixedPoint.divDown(
                 FixedPoint.mulDown(FixedPoint.add(_balanceIn, _amount), _UNINITIALIZED_WEIGHT),
                 _minimumBalance
             );
+    }
+
+    function assembleInitializationParams(
+        IERC20[] memory tokens,
+        IERC20 tokenIn,
+        uint256 currentBalanceTokenIn,
+        uint256 amountIn,
+        mapping(IERC20 => bytes32) storage tokenState,
+        uint256 minBalanceTokenIn
+    )
+        external
+        returns (
+            uint256[] memory nextEndWeights,
+            uint256[] memory fixedStartWeights,
+            uint256[] memory newTokenTargetWeights
+        )
+    {
+        uint256 numTokens = tokens.length;
+
+        // create fixedWeights (e.g. 0/0/0/0/1) for startWeights & endWeights
+        uint256[] memory fixedEndWeights = new uint256[](numTokens);
+        fixedStartWeights = new uint256[](numTokens);
+        newTokenTargetWeights = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            bytes32 currentTokenState = tokenState[tokens[i]];
+            // get final weights for reindex tokens as given per reindex call
+            uint256 finalTokenTargetWeight = currentTokenState
+                .decodeUint32(_NEW_TOKEN_TARGET_WEIGHT_OFFSET)
+                .uncompress32();
+            if (finalTokenTargetWeight != 0) {
+                // it's an uninitialized token
+
+                // if its the to-be-initialized token, use as fixed weight zero
+                // else its a still-not-initialized token => set its fixed weight to 1%
+                fixedEndWeights[i] = tokens[i] == tokenIn ? 0 : _INITIAL_WEIGHT;
+                newTokenTargetWeights[i] = tokens[i] == tokenIn ? 0 : finalTokenTargetWeight;
+
+                // if its the to-be-initialized token its new start weight needs to immediately be adjusted
+                // by the amount that its vault balance exceeds its minimumBalance (weightAdjustmentFactor)
+                // else its a still-not-initialized token => set its fixed start weight to 1%
+                fixedStartWeights[i] = tokens[i] == tokenIn
+                    ? getAdjustedNewStartWeight(currentBalanceTokenIn, minBalanceTokenIn, amountIn)
+                    : _INITIAL_WEIGHT;
+            }
+        }
+
+        nextEndWeights = normalizeInterpolated(getOriginalReindexTargets(tokens, tokenState), fixedEndWeights);
+    }
+
+    function getOriginalReindexTargets(IERC20[] memory tokens, mapping(IERC20 => bytes32) storage tokenState)
+        internal
+        returns (uint256[] memory originalReindexTargets)
+    {
+        uint256 numTokens = tokens.length;
+        uint256[] memory endWeights = new uint256[](numTokens);
+        uint256[] memory newTokenTargetWeights = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            bytes32 currentTokenState = tokenState[tokens[i]];
+            endWeights[i] = currentTokenState.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+            newTokenTargetWeights[i] = currentTokenState.decodeUint32(_NEW_TOKEN_TARGET_WEIGHT_OFFSET).uncompress32();
+        }
+
+        originalReindexTargets = normalizeInterpolated(endWeights, newTokenTargetWeights);
     }
 }
