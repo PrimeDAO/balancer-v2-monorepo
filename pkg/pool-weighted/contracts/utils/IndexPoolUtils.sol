@@ -259,6 +259,7 @@ library IndexPoolUtils {
 
     function getOriginalReindexTargets(IERC20[] memory tokens, mapping(IERC20 => bytes32) storage tokenState)
         internal
+        view
         returns (uint256[] memory originalReindexTargets)
     {
         uint256 numTokens = tokens.length;

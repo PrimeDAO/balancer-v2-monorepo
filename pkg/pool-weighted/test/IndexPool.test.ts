@@ -535,7 +535,7 @@ describe.only('IndexPool', function () {
         });
       });
 
-      context.only('when the new token becomes initialized', () => {
+      context('when the new token becomes initialized', () => {
         const numberOfSwapsUntilInitialization = 4;
         const weightAdjustmentFactor =
           (4 * fromFp(swapInAmount).toNumber()) / fromFp(defaultUninitializedWeight).toNumber();

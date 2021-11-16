@@ -245,7 +245,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
             if (currentBalanceTokenIn.add(swapRequest.amount) >= minBalances[swapRequest.tokenIn]) {
                 // initiate new weight change this time with the final target weights (from reindex call)
                 // and set targetWeight of initialized token to zero
-                _setOriginalTargetWeight(currentBalanceTokenIn, swapRequest);
+                _setOriginalTargetWeight(currentBalanceTokenIn, swapRequest.tokenIn, swapRequest.amount);
                 // use minimumBalance one last time to calc swap price
                 currentBalanceTokenIn = minBalances[swapRequest.tokenIn];
                 // set minimumBalance for initialized token to zero
@@ -260,9 +260,14 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
 
     /// @dev Initiates the weight change to the original target weight of initialized token
     /// @notice Also resets target weight of initialized token to zero within _startGradualWeightChange to save gas
-    /// @param swapRequest Swap params.
+    /// @param tokenIn Address of to-be-innitialized token that is swapped in.
+    /// @param amountIn Amount fo to-be-initialized token that is swapped in.
     /// @param currentBalanceTokenIn Vault balance of token that is swapped into the pool.
-    function _setOriginalTargetWeight(uint256 currentBalanceTokenIn, SwapRequest memory swapRequest) private {
+    function _setOriginalTargetWeight(
+        uint256 currentBalanceTokenIn,
+        IERC20 tokenIn,
+        uint256 amountIn
+    ) private {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
         (
@@ -271,11 +276,11 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
             uint256[] memory newTokenTargetWeights
         ) = IndexPoolUtils.assembleInitializationParams(
             tokens,
-            swapRequest.tokenIn,
+            tokenIn,
             currentBalanceTokenIn,
-            swapRequest.amount,
+            amountIn,
             _tokenState,
-            minBalances[swapRequest.tokenIn]
+            minBalances[tokenIn]
         );
 
         _startGradualWeightChange(
