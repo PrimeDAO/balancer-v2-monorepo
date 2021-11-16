@@ -3,7 +3,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from '@ethersproject/contracts';
 import { fp } from '../../../pvt/helpers/src/numbers';
-import { getExpectedWeights, setupAdjustTokens, setupNewTokens } from './utils/WeightCalculationUtil.test';
+import { getExpectedWeights, getDecimalBetween, getRandomBaseWeights } from './utils/WeightCalculationUtil.test';
 
 const {
   utils: { parseEther },
@@ -11,10 +11,48 @@ const {
 
 const HUNDRED_PERCENT = BigNumber.from(10).pow(18);
 
+const getIntegerBetween = (min: number, max: number): number => Math.floor(Math.random() * max + min);
+
+// generates random baseWeights and fixedWeights for the case where the weights of existing tokens in a pool are changed
+const setupAdjustTokens = (numWeights: number) => {
+  const baseWeights = getRandomBaseWeights(numWeights);
+  const numberAdjustTokens = getIntegerBetween(1, numWeights - 1);
+  const fixedWeights = new Array(numWeights).fill(0);
+
+  let residual = 1;
+  for (let i = 0; i < numberAdjustTokens; i++) {
+    const newWeight = getDecimalBetween(Number.MIN_VALUE, residual / 2);
+    fixedWeights[i] = newWeight;
+    baseWeights[i] = 0;
+    residual -= newWeight;
+  }
+
+  return { baseWeights, fixedWeights };
+};
+
+// generates random baseWeights and fixedWeights for the case where one or two new tokens are added
+const setupNewTokens = (numWeights: number) => {
+  const baseWeights = getRandomBaseWeights(numWeights);
+
+  const numberNewTokens = getIntegerBetween(1, 2);
+  const fixedWeights = new Array(baseWeights.length).fill(0);
+  const initialWeight = 0.01;
+  for (let i = 0; i < numberNewTokens; i++) {
+    fixedWeights.push(initialWeight);
+  }
+  const numberAddedTokens = fixedWeights.length - baseWeights.length;
+
+  for (let i = 0; i < numberAddedTokens; i++) {
+    baseWeights.push(0);
+  }
+
+  return { baseWeights, fixedWeights };
+};
+
 const getTotalWeight = (weights: BigNumber[]): BigNumber =>
   weights.reduce((acc, curr) => acc.add(curr), BigNumber.from(0));
 
-describe('IndexPoolUtils', function () {
+describe.only('IndexPoolUtils', function () {
   let indexPoolUtilsInstance: Contract;
 
   beforeEach(async () => {
