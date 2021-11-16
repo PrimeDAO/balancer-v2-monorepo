@@ -11,7 +11,7 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { FundManagement, SingleSwap, SwapKind } from '@balancer-labs/balancer-js';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
 import { calcOutGivenIn } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
-import { getExpectedWeights, getRandomBaseWeights } from './utils/WeightCalculationUtil.test';
+import { getExpectedWeights } from './utils/WeightCalculationUtil.test';
 
 const calculateMaxWeightDifference = (oldWeights: BigNumber[], newWeights: BigNumber[]) => {
   let maxWeightDifference = 0;
