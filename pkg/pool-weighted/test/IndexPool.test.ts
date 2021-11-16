@@ -840,7 +840,7 @@ describe('IndexPool', function () {
 
           it('sets the correct minimum balance for all the new token', async () => {
             for (let i = numberExistingTokens; i < reindexTokens.length; i++) {
-              let minimumBalance = await pool.minBalances(reindexTokens[i]);
+              const minimumBalance = await pool.minBalances(reindexTokens[i]);
 
               expect(minimumBalance).to.equalWithError(standardMinimumBalance, 0.0001);
             }
@@ -848,7 +848,7 @@ describe('IndexPool', function () {
 
           it('does not set a minimum balance for existing tokens', async () => {
             for (let i = 0; i < numberExistingTokens; i++) {
-              let tokenBalance = await pool.minBalances(reindexTokens[i]);
+              const tokenBalance = await pool.minBalances(reindexTokens[i]);
 
               expect(tokenBalance).to.equal(0);
             }
