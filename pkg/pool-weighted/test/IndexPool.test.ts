@@ -246,63 +246,56 @@ describe.only('IndexPool', function () {
     });
   });
 
-  // describe('#reweighTokens', () => {
-  //   sharedBeforeEach('deploy pool', async () => {
-  //     const params = {
-  //       tokens,
-  //       weights,
-  //       owner,
-  //       poolType: WeightedPoolType.INDEX_POOL,
-  //       swapEnabledOnStart: false,
-  //     };
-  //     pool = await WeightedPool.create(params);
-  //   });
+  describe.only('#reweighTokens', () => {
+    sharedBeforeEach('deploy pool', async () => {
+      const params = {
+        tokens,
+        weights,
+        owner,
+        poolType: WeightedPoolType.INDEX_POOL,
+        swapEnabledOnStart: false,
+      };
+      pool = await WeightedPool.create(params);
+    });
 
-  //   context('when input array lengths differ', () => {
-  //     it('reverts: "INPUT_LENGTH_MISMATCH"', async () => {
-  //       const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
-  //       const twoWeights = [fp(0.5), fp(0.5)];
-
-  //       await expect(pool.reweighTokens(threeAddresses, twoWeights)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-  //     });
-  //   });
-
-  //   context('when weights are not normalized', () => {
-  //     it('reverts: "INPUT_LENGTH_MISMATCH"', async () => {
-  //       const addresses = allTokens.subset(2).tokens.map((token) => token.address);
-  //       const denormalizedWeights = [fp(0.5), fp(0.3)];
-
-  //       await expect(pool.reweighTokens(addresses, denormalizedWeights)).to.be.revertedWith(
-  //         'NORMALIZED_WEIGHT_INVARIANT'
-  //       );
-  //     });
-  //   });
-
-  //   context('with valid inputs', () => {
-  //     const desiredWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
-
-  //     sharedBeforeEach('deploy pool', async () => {
-  //       await pool.reweighTokens(
-  //         allTokens.subset(4).tokens.map((token) => token.address),
-  //         desiredWeights
-  //       );
-  //     });
-
-  //     it('sets the correct endWeights', async () => {
-  //       const { endWeights } = await pool.getGradualWeightUpdateParams();
-
-  //       expect(endWeights).to.equalWithError(desiredWeights, 0.0001);
-  //     });
-
-  //     it('sets the correct rebalancing period', async () => {
-  //       const maxWeightDifference = calculateMaxWeightDifference(desiredWeights, weights);
-  //       const time = getTimeForWeightChange(maxWeightDifference);
-  //       const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
-
-  //       expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
-  //     });
-  //   });
-  // });
+    context('when input array lengths differ', () => {
+      it('reverts: "INPUT_LENGTH_MISMATCH"', async () => {
+        const threeAddresses = allTokens.subset(3).tokens.map((token) => token.address);
+        const twoWeights = [fp(0.5), fp(0.5)];
+        await expect(pool.reweighTokens(controller, threeAddresses, twoWeights)).to.be.revertedWith(
+          'INPUT_LENGTH_MISMATCH'
+        );
+      });
+    });
+    context('when weights are not normalized', () => {
+      it('reverts: "INPUT_LENGTH_MISMATCH"', async () => {
+        const addresses = allTokens.subset(2).tokens.map((token) => token.address);
+        const denormalizedWeights = [fp(0.5), fp(0.3)];
+        await expect(pool.reweighTokens(controller, addresses, denormalizedWeights)).to.be.revertedWith(
+          'NORMALIZED_WEIGHT_INVARIANT'
+        );
+      });
+    });
+    //   context('with valid inputs', () => {
+    //     const desiredWeights = [fp(0.1), fp(0.3), fp(0.5), fp(0.1)];
+    //     sharedBeforeEach('deploy pool', async () => {
+    //       await pool.reweighTokens(
+    //         allTokens.subset(4).tokens.map((token) => token.address),
+    //         desiredWeights
+    //       );
+    //     });
+    //     it('sets the correct endWeights', async () => {
+    //       const { endWeights } = await pool.getGradualWeightUpdateParams();
+    //       expect(endWeights).to.equalWithError(desiredWeights, 0.0001);
+    //     });
+    //     it('sets the correct rebalancing period', async () => {
+    //       const maxWeightDifference = calculateMaxWeightDifference(desiredWeights, weights);
+    //       const time = getTimeForWeightChange(maxWeightDifference);
+    //       const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
+    //       expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
+    //     });
+    //   });
+  });
 
   describe('#reindexTokens', () => {
     describe('input validation', () => {
