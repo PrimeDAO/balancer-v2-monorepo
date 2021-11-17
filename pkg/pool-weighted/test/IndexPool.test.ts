@@ -746,7 +746,7 @@ describe('IndexPool', function () {
       const expectedStartWeights = [fp(0.25), fp(0.25), fp(0.25), fp(0.25)];
       const expectedEndWeights = [fp(0.32999), fp(0.32999), fp(0.330006), fp(0.01)];
 
-      let reindexTokens: string[], poolId: string;
+      let reindexTokens: string[], existingTokens: string[], poolId: string;
 
       sharedBeforeEach('deploy pool', async () => {
         vault = await Vault.create();
@@ -773,7 +773,8 @@ describe('IndexPool', function () {
       });
 
       sharedBeforeEach('call reindexTokens function', async () => {
-        reindexTokens = allTokens.subset(numberExistingTokens).tokens.map((token) => token.address);
+        reindexTokens = allTokens.subset(numberNewTokens).tokens.map((token) => token.address);
+        existingTokens = allTokens.subset(numberExistingTokens).tokens.map((token) => token.address);
         poolId = await pool.getPoolId();
       });
 
@@ -781,7 +782,7 @@ describe('IndexPool', function () {
         await pool.reindexTokens(controller, reindexTokens, reindexWeights, minimumBalances);
         const { tokens: tokensFromVault } = await vault.getPoolTokens(poolId);
 
-        expect(tokensFromVault).to.have.members(reindexTokens);
+        expect(tokensFromVault).to.have.members(existingTokens);
       });
 
       it('emits an event with the correct weight change params', async () => {
@@ -792,7 +793,7 @@ describe('IndexPool', function () {
         const receipt = await tx.wait();
 
         expectEvent.inReceiptWithError(receipt, 'WeightChange', {
-          tokens: reindexTokens,
+          tokens: existingTokens,
           startWeights: expectedStartWeights,
           endWeights: expectedEndWeights,
           finalTargetWeights: expectedNewTokenTargetWeights,
@@ -809,12 +810,10 @@ describe('IndexPool', function () {
 
       it('does not set a minimum balance for existing tokens', async () => {
         await pool.reindexTokens(controller, reindexTokens, reindexWeights, minimumBalances);
-        const minBalFirstToken = await pool.minBalances(reindexTokens[0]);
-        const minBalSecondToken = await pool.minBalances(reindexTokens[1]);
-        const minBalThirdToken = await pool.minBalances(reindexTokens[2]);
-        const minBalFourthToken = await pool.minBalances(
-          allTokens.subset(numberExistingTokens).tokens.map((token) => token.address)[3]
-        );
+        const minBalFirstToken = await pool.minBalances(existingTokens[0]);
+        const minBalSecondToken = await pool.minBalances(existingTokens[1]);
+        const minBalThirdToken = await pool.minBalances(existingTokens[2]);
+        const minBalFourthToken = await pool.minBalances(existingTokens[3]);
 
         expect(minBalFirstToken).to.equal(0);
         expect(minBalSecondToken).to.equal(0);
@@ -825,7 +824,7 @@ describe('IndexPool', function () {
       context('when attempting to swap removed token out of pool', () => {
         sharedBeforeEach('swap token out of pool', async () => {
           await pool.reindexTokens(controller, reindexTokens, reindexWeights, minimumBalances);
-          const tokenOut = allTokens.subset(numberExistingTokens).tokens.map((token) => token.address)[3];
+          const tokenOut = existingTokens[3];
           const singleSwap = {
             poolId,
             kind: SwapKind.GivenIn,

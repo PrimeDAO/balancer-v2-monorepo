@@ -207,7 +207,14 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
             uint256[] memory newDesiredWeights,
             IERC20[] memory newTokens,
             IERC20[] memory finalTokens
-        ) = IndexPoolUtils.assembleReindexParams(tokens, oldTokens, desiredWeights, minimumBalances, _tokenState, minBalances);
+        ) = IndexPoolUtils.assembleReindexParams(
+            tokens,
+            oldTokens,
+            desiredWeights,
+            minimumBalances,
+            _tokenState,
+            minBalances
+        );
 
         getVault().registerTokens(getPoolId(), newTokens, new address[](newTokens.length));
         uint256[] memory baseWeights = new uint256[](finalTokens.length);

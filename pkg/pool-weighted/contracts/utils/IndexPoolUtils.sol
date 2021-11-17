@@ -173,10 +173,7 @@ library IndexPoolUtils {
                 bytes32 currentTokenState = tokenState[token];
                 if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) != 0) {
                     removedTokensLength--;
-                    tokenState[token] = currentTokenState.insertUint5(
-                        _SAVE_FLAG,
-                        _REMOVE_FLAG_OFFSET
-                    );
+                    tokenState[token] = currentTokenState.insertUint5(_SAVE_FLAG, _REMOVE_FLAG_OFFSET);
                 }
             }
             // the weights that are fixed and that the other tokens need to be adjusted by
@@ -192,22 +189,15 @@ library IndexPoolUtils {
                 IERC20 token = IERC20(oldTokens[i]);
                 bytes32 currentTokenState = tokenState[token];
                 if (currentTokenState.decodeUint5(_REMOVE_FLAG_OFFSET) != _SAVE_FLAG) {
-                    tokenState[token] = currentTokenState.insertUint5(
-                        _REMOVE_FLAG,
-                        _REMOVE_FLAG_OFFSET
-                    );
+                    tokenState[token] = currentTokenState.insertUint5(_REMOVE_FLAG, _REMOVE_FLAG_OFFSET);
                     finalTokens[tokensLength + j] = token;
                     finalFixedWeights[tokensLength + j] = _INITIAL_WEIGHT;
                     newDesiredWeights[tokensLength + j] = 0;
                     j++;
                 } else {
-                    tokenState[token] = currentTokenState.insertUint5(
-                        _NORMAL_FLAG,
-                        _REMOVE_FLAG_OFFSET
-                    );
+                    tokenState[token] = currentTokenState.insertUint5(_NORMAL_FLAG, _REMOVE_FLAG_OFFSET);
                 }
             }
-
         }
 
         /*
@@ -218,7 +208,7 @@ library IndexPoolUtils {
         uint8 newTokenCounter;
 
         for (uint8 i = 0; i < tokens.length; i++) {
-            IERC20 currentToken = IERC20(tokens[i]);
+            IERC20 currentToken = tokens[i];
             _require(minimumBalances[i] != 0, Errors.INVALID_ZERO_MINIMUM_BALANCE);
             bytes32 currentTokenState = tokenState[currentToken];
             finalTokens[i] = currentToken;
@@ -243,12 +233,19 @@ library IndexPoolUtils {
                 }
             }
         }
-
         IERC20[] memory newTokens = new IERC20[](newTokenCounter);
 
         for (uint8 i = 0; i < newTokenCounter; i++) {
             newTokens[i] = newTokensContainer[i];
         }
+        return (
+            initialFixedWeights,
+            finalFixedWeights,
+            newTokenTargetWeights,
+            newDesiredWeights,
+            newTokens,
+            finalTokens
+        );
     }
 
     /// @dev When token becomes initialized its weight is immediately adjusted relative to the amount by
