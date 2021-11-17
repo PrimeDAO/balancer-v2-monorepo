@@ -13,6 +13,7 @@ interface IIndexPool {
         string symbol;
         IERC20[] tokens;
         uint256[] normalizedWeights;
+        address[] assetManagers;
         uint256 swapFeePercentage;
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;

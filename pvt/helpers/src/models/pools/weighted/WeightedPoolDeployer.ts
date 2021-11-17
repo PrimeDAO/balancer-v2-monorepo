@@ -136,6 +136,7 @@ export default {
               tokens: tokens.addresses,
               normalizedWeights: weights,
               swapFeePercentage: swapFeePercentage,
+              assetManagers: Array(tokens.length).fill(TypesConverter.toAddress(tokenHandler)),
               pauseWindowDuration: pauseWindowDuration,
               bufferPeriodDuration: bufferPeriodDuration,
               controller: TypesConverter.toAddress(owner),

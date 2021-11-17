@@ -16,11 +16,12 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../BaseWeightedPool.sol";
-import "./IIndexPool.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "./WeightCompression.sol";
 import "../utils/IndexPoolUtils.sol";
+import "./IIndexPool.sol";
+import "./ITokenHandler.sol";
 
 /**
  * @dev Basic Weighted Pool with immutable weights.
@@ -32,6 +33,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
 
     uint256 private constant _MAX_TOKENS = 50;
     uint256 private constant _INITIAL_WEIGHT = 10**16;
+    uint256 private constant _TOLERANCE = 10**12;
     uint256 private constant _MIN_TOKENS = 3;
 
     // Use the _miscData slot in BasePool
@@ -66,7 +68,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
     uint256 private constant _NEW_TOKEN_TARGET_WEIGHT_OFFSET = 106;
     uint256 private constant _SECONDS_IN_A_DAY = 86400;
 
-    address public tokenHandler;
+    ITokenHandler public tokenHandler;
 
     constructor(NewPoolParams memory params)
         BaseWeightedPool(
@@ -74,7 +76,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
             params.name,
             params.symbol,
             params.tokens,
-            new address[](params.tokens.length),
+            params.assetManagers,
             params.swapFeePercentage,
             params.pauseWindowDuration,
             params.bufferPeriodDuration,
@@ -91,7 +93,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
         // Double check it fits in 7 bits
         _require(_getTotalTokens() == numTokens, Errors.MAX_TOKENS);
 
-        tokenHandler = params.tokenHandler;
+        tokenHandler = ITokenHandler(params.tokenHandler);
 
         _startGradualWeightChange(
             block.timestamp,
@@ -223,8 +225,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
             // as applicable immediately after the first weight change
             // e.g. 49.5/49.5/1 after a tokens has been added to a 50/50 pool
             IndexPoolUtils.normalizeInterpolated(baseWeights, fixedWeights),
-            // TODO: here we will need the endWeights as long as they apply until the new token becomes initialized
-            // e.g. 45/45/10 after new token becomes initialized and aims for fina target weight of 10%
+            // here we will set the endWeights as they apply until the new token becomes initialized
+            // e.g. 66/33/1 (when actual final weights are 60/30/10)
             IndexPoolUtils.normalizeInterpolated(desiredWeights, fixedWeights),
             tokens,
             newTokenTargetWeights
@@ -260,9 +262,17 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
             } else {
                 currentBalanceTokenIn = minBalances[swapRequest.tokenIn];
             }
-        }
+            // check if residual amount for REMOVE_TOKEN should be send to tokenHandler
+            // TODO: proper check with removal flag
+        } else if (_getNormalizedWeight(swapRequest.tokenOut) < _INITIAL_WEIGHT.add(_TOLERANCE)) {
+            uint256 returnAmount = super.onSwap(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+            (uint256 totalAmount, , , ) = getVault().getPoolTokenInfo(getPoolId(), swapRequest.tokenOut);
+            uint256 residualAmount = totalAmount.sub(returnAmount);
 
-        return super.onSwap(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+            return returnAmount;
+        } else {
+            return super.onSwap(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        }
     }
 
     /// @dev Initiates the weight change to the original target weight of initialized token

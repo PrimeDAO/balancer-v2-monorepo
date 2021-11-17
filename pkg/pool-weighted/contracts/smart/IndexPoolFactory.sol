@@ -41,6 +41,11 @@ contract IndexPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
         address tokenHandler
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
+
+        address[] memory assetManagers = new address[](tokens.length);
+
+        for (uint256 i = 0; i < tokens.length; i++) assetManagers[i] = tokenHandler;
+
         return
             _create(
                 abi.encode(
@@ -50,6 +55,7 @@ contract IndexPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
                         symbol: symbol,
                         tokens: tokens,
                         normalizedWeights: weights,
+                        assetManagers: assetManagers,
                         swapFeePercentage: swapFeePercentage,
                         pauseWindowDuration: pauseWindowDuration,
                         bufferPeriodDuration: bufferPeriodDuration,

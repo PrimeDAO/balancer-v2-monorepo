@@ -12,6 +12,7 @@ import { FundManagement, SingleSwap, SwapKind } from '@balancer-labs/balancer-js
 import * as expectEvent from '../../../pvt/helpers/src/test/expectEvent';
 import { calcOutGivenIn } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
+import { Contract } from '@ethersproject/contracts';
 
 // const calculateMaxWeightDifference = (oldWeights: BigNumber[], newWeights: BigNumber[]) => {
 //   let maxWeightDifference = 0;
@@ -140,6 +141,14 @@ describe('IndexPool', function () {
   });
 
   context('when deployed from factory', () => {
+    let tokenHandlerAddress: string;
+
+    sharedBeforeEach('deploy tokenHandler', async () => {
+      const tokenHandlerFactory = await ethers.getContractFactory('MockTokenHandler');
+      ({ address: tokenHandlerAddress } = await tokenHandlerFactory.deploy());
+      // await indexPoolUtilsInstance.deployed();
+    });
+
     sharedBeforeEach('deploy pool', async () => {
       const params = {
         tokens,
@@ -147,14 +156,15 @@ describe('IndexPool', function () {
         owner: controller,
         poolType: WeightedPoolType.INDEX_POOL,
         fromFactory: true,
+        tokenHandler: tokenHandlerAddress,
       };
       pool = await WeightedPool.create(params);
     });
 
-    it('has no asset managers', async () => {
+    it.only('has the pool set to be the asset manager', async () => {
       await tokens.asyncEach(async (token) => {
         const { assetManager } = await pool.getTokenInfo(token);
-        expect(assetManager).to.be.zeroAddress;
+        expect(assetManager).to.be.equal(tokenHandlerAddress);
       });
     });
   });
@@ -808,11 +818,11 @@ describe('IndexPool', function () {
         await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
       });
 
-      it.only('sends the residual amount of REMOVE_TOKEN to tokenHandler', async () => {
-        const tokenHandlerBalance = await allTokens.third.balanceOf(tokenHandler);
+      // it('sends the residual amount of REMOVE_TOKEN to tokenHandler', async () => {
+      //   const tokenHandlerBalance = await allTokens.third.balanceOf(tokenHandler);
 
-        expect(tokenHandlerBalance).to.be.gt(0);
-      });
+      //   expect(tokenHandlerBalance).to.be.gt(0);
+      // });
     });
   });
 });
