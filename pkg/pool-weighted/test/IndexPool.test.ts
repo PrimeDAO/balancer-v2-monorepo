@@ -311,6 +311,7 @@ describe('IndexPool', function () {
   });
 
   describe('#reweighTokens', () => {
+    // eslint-disable-next-line
     let args: any, receipt: any;
     sharedBeforeEach('deploy pool', async () => {
       const params = {
@@ -353,7 +354,7 @@ describe('IndexPool', function () {
         );
 
         receipt = await tx.wait();
-
+        // eslint-disable-next-line
         args = receipt.events.filter((data: any) => {
           return data.event === 'WeightChange';
         })[0].args;
@@ -819,7 +820,9 @@ describe('IndexPool', function () {
         desiredWeightsBN: BigNumber[],
         expectedEndWeights: BigNumber[],
         expectedStartWeights: BigNumber[],
+        // eslint-disable-next-line
         receipt: any,
+        // eslint-disable-next-line
         args: any;
 
       for (const numberNewTokens of range(2, MAX_TOKENS_TO_ADD)) {
@@ -870,6 +873,7 @@ describe('IndexPool', function () {
             const tx = await pool.reindexTokens(controller, reindexTokens, desiredWeightsBN, minimumBalances);
 
             receipt = await tx.wait();
+            // eslint-disable-next-line
             args = receipt.events.filter((data: any) => {
               return data.event === 'WeightChange';
             })[0].args;
