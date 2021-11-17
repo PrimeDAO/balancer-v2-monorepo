@@ -140,9 +140,12 @@ library IndexPoolUtils {
     /// @return initialFixedWeights Weights that are fixed and that the other non-fixed weights need to be adjusted for.
     /// @return finalFixedWeights Weights that are fixed and that the other non-fixed weights need to be adjusted for.
     /// @return newTokenTargetWeights contains only the final target weights for uninitialized tokens (else zero).
+    /// @return newDesiredWeights contains only the final desired weights for tokens.
     /// @return newTokens contains only the new pool token addresses (no zeros!).
+    /// @return finalTokens contains final pool token addresses (no zeros!).
     function assembleReindexParams(
         IERC20[] memory tokens,
+        IERC20[] memory oldTokens,
         uint256[] memory desiredWeights,
         uint256[] memory minimumBalances,
         mapping(IERC20 => bytes32) storage tokenState,
@@ -153,18 +156,59 @@ library IndexPoolUtils {
             uint256[] memory initialFixedWeights,
             uint256[] memory finalFixedWeights,
             uint256[] memory newTokenTargetWeights,
-            IERC20[] memory newTokens
+            uint256[] memory newDesiredWeights,
+            IERC20[] memory newTokens,
+            IERC20[] memory finalTokens
         )
     {
         /*
             assemble params for IndexPoolUtils._normalizeInterpolated:
         */
 
-        // the weights that are fixed and that the other tokens need to be adjusted by
-        initialFixedWeights = new uint256[](tokens.length);
-        finalFixedWeights = new uint256[](tokens.length);
-        // we need to store the final desired weight of a new tokensince initially it will be set to 1%
-        newTokenTargetWeights = new uint256[](tokens.length);
+        {
+            uint256 removedTokensLength = oldTokens.length;
+            uint256 tokensLength = tokens.length;
+            for (uint8 i = 0; i < tokens.length; i++) {
+                IERC20 token = IERC20(tokens[i]);
+                bytes32 currentTokenState = tokenState[token];
+                if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) != 0) {
+                    removedTokensLength--;
+                    tokenState[token] = currentTokenState.insertUint5(
+                        _SAVE_FLAG,
+                        _REMOVE_FLAG_OFFSET
+                    );
+                }
+            }
+            // the weights that are fixed and that the other tokens need to be adjusted by
+            initialFixedWeights = new uint256[](tokensLength + removedTokensLength);
+            finalFixedWeights = new uint256[](tokensLength + removedTokensLength);
+            // we need to store the final desired weight of a new tokensince initially it will be set to 1%
+            newTokenTargetWeights = new uint256[](tokensLength + removedTokensLength);
+            newDesiredWeights = new uint256[](tokensLength + removedTokensLength);
+            finalTokens = new IERC20[](tokensLength + removedTokensLength);
+
+            uint8 j = 0;
+            for (uint8 i = 0; i < oldTokens.length; i++) {
+                IERC20 token = IERC20(oldTokens[i]);
+                bytes32 currentTokenState = tokenState[token];
+                if (currentTokenState.decodeUint5(_REMOVE_FLAG_OFFSET) != _SAVE_FLAG) {
+                    tokenState[token] = currentTokenState.insertUint5(
+                        _REMOVE_FLAG,
+                        _REMOVE_FLAG_OFFSET
+                    );
+                    finalTokens[tokensLength + j] = token;
+                    finalFixedWeights[tokensLength + j] = _INITIAL_WEIGHT;
+                    newDesiredWeights[tokensLength + j] = 0;
+                    j++;
+                } else {
+                    tokenState[token] = currentTokenState.insertUint5(
+                        _NORMAL_FLAG,
+                        _REMOVE_FLAG_OFFSET
+                    );
+                }
+            }
+
+        }
 
         /*
             this is some mambojambo to get an array that only contains the
@@ -174,9 +218,11 @@ library IndexPoolUtils {
         uint8 newTokenCounter;
 
         for (uint8 i = 0; i < tokens.length; i++) {
+            IERC20 currentToken = IERC20(tokens[i]);
             _require(minimumBalances[i] != 0, Errors.INVALID_ZERO_MINIMUM_BALANCE);
-            bytes32 currentTokenState = tokenState[IERC20(tokens[i])];
-
+            bytes32 currentTokenState = tokenState[currentToken];
+            finalTokens[i] = currentToken;
+            newDesiredWeights[i] = desiredWeights[i];
             // // check if token is new token by checking if no startTime is set
             if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) == 0) {
                 // currentToken is new token
@@ -186,9 +232,9 @@ library IndexPoolUtils {
                 // mark token to be new to allow for additional logic in _startGradualWeightChange (for gas savings)
                 newTokenTargetWeights[i] = desiredWeights[i];
                 // store minimumBalance (state) also serves as initialization flag
-                minBalances[tokens[i]] = minimumBalances[i];
+                minBalances[currentToken] = minimumBalances[i];
                 // add new token to container to be stored further down
-                newTokensContainer[newTokenCounter] = tokens[i];
+                newTokensContainer[newTokenCounter] = currentToken;
                 // increment counter for new tokens (memory)
                 newTokenCounter++;
             } else {
@@ -198,7 +244,7 @@ library IndexPoolUtils {
             }
         }
 
-        newTokens = new IERC20[](newTokenCounter);
+        IERC20[] memory newTokens = new IERC20[](newTokenCounter);
 
         for (uint8 i = 0; i < newTokenCounter; i++) {
             newTokens[i] = newTokensContainer[i];

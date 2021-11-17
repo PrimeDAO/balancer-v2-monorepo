@@ -734,10 +734,10 @@ describe('IndexPool', function () {
     });
 
     context('when removing one token', () => {
-      const numberNewTokens = 4;
+      const numberNewTokens = 3;
       const numberExistingTokens = 4;
       const originalWeights = [fp(0.25), fp(0.25), fp(0.25), fp(0.25)];
-      const reindexWeights = [fp(0.33333), fp(0.33333), fp(0.33334), 0];
+      const reindexWeights = [fp(0.33333), fp(0.33333), fp(0.33334)];
       const standardMinimumBalance = fp(0.01);
       const swapInAmount = fp(0.003);
       const initialTokenAmountsInPool = fp(1);
