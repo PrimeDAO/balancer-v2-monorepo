@@ -56,7 +56,14 @@ describe('IndexPoolUtils', function () {
   let indexPoolUtilsInstance: Contract;
 
   beforeEach(async () => {
-    const indexPoolUtilsFactory = await ethers.getContractFactory('MockIndexPoolUtils');
+    const indexPoolUtilsLibraryFactory = await ethers.getContractFactory('IndexPoolUtils');
+    const indexPoolUtilsLibraryInstance = await indexPoolUtilsLibraryFactory.deploy();
+
+    const indexPoolUtilsFactory = await ethers.getContractFactory('MockIndexPoolUtils', {
+      libraries: {
+        IndexPoolUtils: indexPoolUtilsLibraryInstance.address,
+      },
+    });
     indexPoolUtilsInstance = await indexPoolUtilsFactory.deploy();
     await indexPoolUtilsInstance.deployed();
   });

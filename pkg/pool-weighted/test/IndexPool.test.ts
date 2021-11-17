@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-// import { BigNumber } from 'ethers';
+import { BigNumber } from 'ethers';
 import { range } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { fp, pct, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
@@ -14,22 +14,22 @@ import { calcOutGivenIn } from '@balancer-labs/v2-helpers/src/models/pools/weigh
 import { getExpectedWeights } from './utils/WeightCalculationUtil.test';
 import { WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
 
-// const calculateMaxWeightDifference = (oldWeights: BigNumber[], newWeights: BigNumber[]) => {
-//   let maxWeightDifference = 0;
-//   for (let i = 0; i < newWeights.length; i++) {
-//     if (Math.abs(Number(newWeights[i]) - Number(oldWeights[i])) > maxWeightDifference) {
-//       maxWeightDifference = Math.abs(Number(newWeights[i]) - Number(oldWeights[i]));
-//     }
-//   }
-//   return maxWeightDifference;
-// };
+const calculateMaxWeightDifference = (oldWeights: BigNumber[], newWeights: BigNumber[]) => {
+  let maxWeightDifference = 0;
+  for (let i = 0; i < newWeights.length; i++) {
+    if (Math.abs(Number(newWeights[i]) - Number(oldWeights[i])) > maxWeightDifference) {
+      maxWeightDifference = Math.abs(Number(newWeights[i]) - Number(oldWeights[i]));
+    }
+  }
+  return maxWeightDifference;
+};
 
-// const getTimeForWeightChange = (weightDifference: number) => {
-//   // 1e18 is 100%, we need to calculate on how much percent the weight changes first,
-//   // then we can understand how much time do we need by multiplying amount of percents o amount of seconds per day
-//   // (1% change in a day at max rate)
-//   return (weightDifference / 1e18) * 86400 * 100;
-// };
+const getTimeForWeightChange = (weightDifference: number) => {
+  // 1e18 is 100%, we need to calculate on how much percent the weight changes first,
+  // then we can understand how much time do we need by multiplying amount of percents o amount of seconds per day
+  // (1% change in a day at max rate)
+  return (weightDifference / 1e18) * 86400 * 100;
+};
 
 const getNewTokensWeightArray = (numberNewTokens: number, newTokenTargetWeight: number) => {
   const newTokenWeightsArray = new Array(numberNewTokens).fill(newTokenTargetWeight);
@@ -76,6 +76,10 @@ const getAdjustedExistingTokenWeights = (
     adjustedTokenWeights = Array(numberExistingTokens).fill(singleOriginalPoolWeight);
   }
   return adjustedTokenWeights;
+};
+
+const getEvenBaseweights = (numberOfTokens: number) => {
+  return Array(numberOfTokens).fill(fp(1 / numberOfTokens)); //WEIGHTS.slice(0, TOKEN_COUNT).map(fp);
 };
 
 describe('IndexPool', function () {
@@ -125,6 +129,16 @@ describe('IndexPool', function () {
       await expect(WeightedPool.create(params2)).to.be.revertedWith('MIN_TOKENS');
     });
 
+    it('fails with > 50 tokens', async () => {
+      const params = {
+        tokens: allTokens,
+        weights: range(10000, 10000 + MAX_TOKENS_50),
+        owner: controller,
+        poolType: WeightedPoolType.INDEX_POOL,
+      };
+      await expect(WeightedPool.create(params)).to.be.revertedWith('MAX_TOKENS');
+    });
+
     it('fails with mismatched tokens/weights', async () => {
       const params = {
         tokens,
@@ -137,7 +151,7 @@ describe('IndexPool', function () {
   });
 
   describe('weights and scaling factors', () => {
-    for (const numTokens of range(3, MAX_TOKENS + 1)) {
+    for (const numTokens of range(3, MAX_TOKENS_50)) {
       context(`with ${numTokens} tokens`, () => {
         sharedBeforeEach('deploy pool', async () => {
           tokens = allTokens.subset(numTokens);
@@ -145,7 +159,7 @@ describe('IndexPool', function () {
           pool = await WeightedPool.create({
             poolType: WeightedPoolType.INDEX_POOL,
             tokens,
-            weights: weights.slice(0, numTokens),
+            weights: getEvenBaseweights(numTokens),
           });
         });
 
@@ -169,6 +183,7 @@ describe('IndexPool', function () {
 
   context('when deployed from factory', () => {
     sharedBeforeEach('deploy pool', async () => {
+      tokens = allTokens.subset(MAX_TOKENS);
       const params = {
         tokens,
         weights,
@@ -296,6 +311,7 @@ describe('IndexPool', function () {
   });
 
   describe('#reweighTokens', () => {
+    let args: any, receipt: any;
     sharedBeforeEach('deploy pool', async () => {
       const params = {
         tokens,
@@ -336,7 +352,11 @@ describe('IndexPool', function () {
           desiredWeights
         );
 
-        const receipt = await tx.wait();
+        receipt = await tx.wait();
+
+        args = receipt.events.filter((data: any) => {
+          return data.event === 'WeightChange';
+        })[0].args;
 
         expectEvent.inReceiptWithError(receipt, 'WeightChange', {
           tokens: allTokens.subset(4).tokens.map((token) => token.address),
@@ -346,12 +366,14 @@ describe('IndexPool', function () {
         });
       });
 
-      // it('sets the correct rebalancing period', async () => {
-      //   const maxWeightDifference = calculateMaxWeightDifference(desiredWeights, weights);
-      //   const time = getTimeForWeightChange(maxWeightDifference);
-      //   const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
-      //   expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
-      // });
+      it('sets the correct rebalancing period', async () => {
+        const maxWeightDifference = calculateMaxWeightDifference(desiredWeights, weights);
+        const time = getTimeForWeightChange(maxWeightDifference);
+        const startTime = args.startTime;
+        const endTime = args.endTime;
+
+        expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
+      });
     });
   });
 
@@ -796,7 +818,9 @@ describe('IndexPool', function () {
         minimumBalances: BigNumber[],
         desiredWeightsBN: BigNumber[],
         expectedEndWeights: BigNumber[],
-        expectedStartWeights: BigNumber[];
+        expectedStartWeights: BigNumber[],
+        receipt: any,
+        args: any;
 
       for (const numberNewTokens of range(2, MAX_TOKENS_TO_ADD)) {
         context(`call reindexTokens with ${numberNewTokens} new tokens`, () => {
@@ -843,7 +867,12 @@ describe('IndexPool', function () {
               .tokens.map((token) => token.address);
             poolId = await pool.getPoolId();
 
-            await pool.reindexTokens(controller, reindexTokens, desiredWeightsBN, minimumBalances);
+            const tx = await pool.reindexTokens(controller, reindexTokens, desiredWeightsBN, minimumBalances);
+
+            receipt = await tx.wait();
+            args = receipt.events.filter((data: any) => {
+              return data.event === 'WeightChange';
+            })[0].args;
           });
 
           it('adds the new tokens to the vault registry', async () => {
@@ -852,22 +881,18 @@ describe('IndexPool', function () {
             expect(tokensFromVault).to.have.members(reindexTokens);
           });
 
-          it(`sets the correct startWeights for all ${numberNewTokens} tokens`, async () => {
-            const { startWeights } = await pool.getGradualWeightUpdateParams();
-
-            expect(startWeights).to.equalWithError(expectedStartWeights, 0.0001);
-          });
-
-          it(`sets the correct endWeights for all ${numberNewTokens} tokens`, async () => {
-            const { endWeights } = await pool.getGradualWeightUpdateParams();
-
-            expect(endWeights).to.equalWithError(expectedEndWeights, 0.0001);
+          it(`sets the correct startWeights and endWeight for all ${numberNewTokens} tokens`, async () => {
+            expectEvent.inIndirectReceiptWithError(receipt, pool.instance.interface, 'WeightChange', {
+              startWeights: expectedStartWeights,
+              endWeights: expectedEndWeights,
+            });
           });
 
           it('sets the correct rebalancing period', async () => {
             const maxWeightDifference = calculateMaxWeightDifference(desiredWeightsBN, [...originalWeightsBN, fp(0)]);
             const time = getTimeForWeightChange(maxWeightDifference);
-            const { startTime, endTime } = await pool.getGradualWeightUpdateParams();
+            const startTime = args.startTime;
+            const endTime = args.endTime;
 
             expect(Number(endTime) - Number(startTime)).to.equalWithError(time, 0.0001);
           });
@@ -893,7 +918,7 @@ describe('IndexPool', function () {
               ...getNewTokensWeightArray(numberExistingTokens, 0).map((w) => fp(w)),
               ...getNewTokensWeightArray(numberNewTokens, newTokenTargetWeight).map((w) => fp(w)),
             ];
-            const { newTokenTargetWeights } = await pool.getGradualWeightUpdateParams();
+            const newTokenTargetWeights = args.finalTargetWeights;
 
             expect(newTokenTargetWeights).to.equalWithError(expectedNewTokenTargetWeights, 0.0001);
           });
