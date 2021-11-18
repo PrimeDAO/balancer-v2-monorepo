@@ -246,6 +246,36 @@ describe('IndexPool', function () {
     });
   });
 
+  describe('#setMinimumWeight', () => {
+    sharedBeforeEach('deploy pool', async () => {
+      const params = {
+        tokens,
+        weights,
+        owner,
+        poolType: WeightedPoolType.INDEX_POOL,
+        swapEnabledOnStart: false,
+      };
+      pool = await WeightedPool.create(params);
+    });
+
+    context('when called by not owner', () => {
+      it('reverts: "SENDER_NOT_ALLOWED"', async () => {
+        const address = allTokens.tokens.map((token) => token.address)[0];
+        const minimalBalance = fp(0.001);
+        await expect(pool.setMinimumBalance(randomDude, address, minimalBalance)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    });
+
+    context('when called by owner', () => {
+      it('Changes minimal balance', async () => {
+        const address = allTokens.tokens.map((token) => token.address)[0];
+        const minimalBalance = fp(0.001);
+        await pool.setMinimumBalance(owner, address, minimalBalance);
+        expect(await pool.minBalances(address)).to.equal(minimalBalance);
+      });
+    });
+  });
+
   describe('#reweighTokens', () => {
     sharedBeforeEach('deploy pool', async () => {
       const params = {

@@ -185,10 +185,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
     /// @dev Sets token minimum balance.
     /// @param token Token to set minimal balance.
     /// @param minimumBalance Minimal balance to set.
-    function setMinimumBalance
-        IERC20 token,
-        uint256 minimumBalance
-    ) external authenticate {
+    function setMinimumBalance(IERC20 token, uint256 minimumBalance) external authenticate {
         minBalances[token] = minimumBalance;
     }
 
@@ -426,7 +423,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
         return
             (actionId == getActionId(this.reindexTokens.selector)) ||
             (actionId == getActionId(this.reweighTokens.selector)) ||
-            (actionId == getActionId(this.setMinimumBalance.selector)) ||||
+            (actionId == getActionId(this.setMinimumBalance.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
 }
