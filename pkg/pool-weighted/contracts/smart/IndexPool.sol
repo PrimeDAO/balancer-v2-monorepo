@@ -256,7 +256,10 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
     ) public override returns (uint256) {
         //cannot swap out uninitialized token
         _require(minBalances[swapRequest.tokenOut] == 0, Errors.UNINITIALIZED_TOKEN);
-        require(_tokenState[swapRequest.tokenIn].decodeUint5(_REMOVE_FLAG_OFFSET) != _REMOVE_FLAG, "Removed token");
+        _require(
+            _tokenState[swapRequest.tokenIn].decodeUint5(_REMOVE_FLAG_OFFSET) != _REMOVE_FLAG,
+            Errors.REMOVED_TOKEN
+        );
 
         // check if uninitialized token will be swapped INTO the pool
         if (minBalances[swapRequest.tokenIn] != 0) {
