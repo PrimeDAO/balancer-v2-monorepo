@@ -227,4 +227,5 @@ library Errors {
     // Index
     uint256 internal constant INVALID_ZERO_MINIMUM_BALANCE = 700;
     uint256 internal constant UNINITIALIZED_TOKEN = 701;
+    uint256 internal constant REMOVED_TOKEN = 702;
 }
