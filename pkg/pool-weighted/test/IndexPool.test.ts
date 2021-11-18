@@ -259,10 +259,10 @@ describe('IndexPool', function () {
     });
 
     context('when called by not owner', () => {
-      it('reverts: "SENDER_NOT_ALLOWED"', async () => {
+      it('reverts: "BAL#401 (SENDER_NOT_ALLOWED)"', async () => {
         const address = allTokens.tokens.map((token) => token.address)[0];
         const minimalBalance = fp(0.001);
-        await expect(pool.setMinimumBalance(randomDude, address, minimalBalance)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(pool.setMinimumBalance(randomDude, address, minimalBalance)).to.be.revertedWith('BAL#401');
       });
     });
 
