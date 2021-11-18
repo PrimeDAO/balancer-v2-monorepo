@@ -7,6 +7,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 interface ITokenHandler {
-    function setIndexPool(address) external;
-    // function withdrawToken(bytes32, )
+    function setup(IVault) external;
+
+    function withdrawTokensFromVault(IERC20[] memory, uint256[] memory) external;
 }

@@ -665,4 +665,8 @@ export default class WeightedPool {
   async tokenHandler(): Promise<string> {
     return await this.instance.tokenHandler();
   }
+
+  async removeFinalizedTokens(): Promise<ContractTransaction> {
+    return await this.instance.removeFinalizedTokens();
+  }
 }

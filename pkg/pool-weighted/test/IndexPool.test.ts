@@ -36,11 +36,10 @@ describe('IndexPool', function () {
     controller: SignerWithAddress,
     other: SignerWithAddress,
     randomDude: SignerWithAddress,
-    tokenHandler: SignerWithAddress,
     vault: Vault;
 
   before('setup signers', async () => {
-    [, owner, other, randomDude, tokenHandler] = await ethers.getSigners();
+    [, owner, other, randomDude] = await ethers.getSigners();
     controller = owner;
   });
 
@@ -118,26 +117,6 @@ describe('IndexPool', function () {
         });
       }
     });
-
-    describe('token handler', () => {
-      sharedBeforeEach('deploy pool', async () => {
-        tokens = allTokens.subset(4);
-
-        pool = await WeightedPool.create({
-          poolType: WeightedPoolType.INDEX_POOL,
-          tokens,
-          owner: controller,
-          tokenHandler: tokenHandler.address,
-          weights: weights.slice(0, 4),
-        });
-      });
-
-      it('sets the correct token handler address', async () => {
-        const reveivedTokenHandler = await pool.tokenHandler();
-
-        expect(reveivedTokenHandler).to.equal(tokenHandler.address);
-      });
-    });
   });
 
   context('when deployed from factory', () => {
@@ -161,7 +140,7 @@ describe('IndexPool', function () {
       pool = await WeightedPool.create(params);
     });
 
-    it.only('has the pool set to be the asset manager', async () => {
+    it('has the pool set to be the asset manager', async () => {
       await tokens.asyncEach(async (token) => {
         const { assetManager } = await pool.getTokenInfo(token);
         expect(assetManager).to.be.equal(tokenHandlerAddress);
@@ -764,7 +743,7 @@ describe('IndexPool', function () {
       });
     });
 
-    context('when removing one token', () => {
+    context.only('when token is finalized (= ready to be removed)', () => {
       const numTokens = 4;
       const removeTokenIndex = 3;
       const removeTokenWeight = fp(0.01);
@@ -774,7 +753,12 @@ describe('IndexPool', function () {
       const defaultPoolAmount = fp(1);
       const initialBalances = [defaultPoolAmount, defaultPoolAmount, defaultPoolAmount, removeAmountInPool];
 
-      let poolId: string, vault: Vault;
+      let poolId: string, vault: Vault, tokenHandlerAddress: string;
+
+      sharedBeforeEach('deploy tokenHandler', async () => {
+        const tokenHandlerFactory = await ethers.getContractFactory('MockTokenHandler');
+        ({ address: tokenHandlerAddress } = await tokenHandlerFactory.deploy());
+      });
 
       sharedBeforeEach('setup tokens & deploy pool', async () => {
         tokens = allTokens.subset(numTokens);
@@ -786,6 +770,7 @@ describe('IndexPool', function () {
           poolType: WeightedPoolType.INDEX_POOL,
           fromFactory: true,
           vault,
+          tokenHandler: tokenHandlerAddress,
         };
         pool = await WeightedPool.create(params);
         poolId = await pool.getPoolId();
@@ -797,7 +782,7 @@ describe('IndexPool', function () {
         await pool.init({ from: owner, initialBalances });
       });
 
-      sharedBeforeEach('swap REMOVE_TOKEN out', async () => {
+      it('cannot be swapped out when it has reached 1% weight and it is flagged', async () => {
         const singleSwap = {
           poolId,
           kind: SwapKind.GivenIn,
@@ -815,14 +800,20 @@ describe('IndexPool', function () {
         const limit = 0; // Minimum amount out
         const deadline = MAX_UINT256;
 
-        await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+        await expect(vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline)).to.be.revertedWith(
+          'FINALIZED_TOKEN'
+        );
       });
 
-      // it('sends the residual amount of REMOVE_TOKEN to tokenHandler', async () => {
-      //   const tokenHandlerBalance = await allTokens.third.balanceOf(tokenHandler);
+      describe('#removeFinalizedTokens', () => {
+        it('sends the residual token amount to the token handler', async () => {
+          const { cash: initialVaultBalance } = await vault.getPoolTokenInfo(poolId, allTokens.fourth);
+          await pool.removeFinalizedTokens();
 
-      //   expect(tokenHandlerBalance).to.be.gt(0);
-      // });
+          const tokenHandlerBalance = await allTokens.fourth.balanceOf(tokenHandlerAddress);
+          expect(tokenHandlerBalance).to.be.eql(initialVaultBalance);
+        });
+      });
     });
   });
 });

@@ -7,6 +7,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "../smart/WeightCompression.sol";
 
+import "hardhat/console.sol";
+
 library IndexPoolUtils {
     using FixedPoint for uint256;
     using Math for uint256;
@@ -17,6 +19,7 @@ library IndexPoolUtils {
     uint256 internal constant _HUNDRED_PERCENT = 10**_PRECISION;
     uint256 internal constant _UNINITIALIZED_WEIGHT = _HUNDRED_PERCENT / 100;
     uint256 private constant _INITIAL_WEIGHT = 10**16;
+    uint256 private constant _TOLERANCE = 10**12;
 
     // Offsets for data elements in _tokenState
     uint256 private constant _START_WEIGHT_OFFSET = 0;
@@ -296,5 +299,41 @@ library IndexPoolUtils {
         }
 
         originalReindexTargets = normalizeInterpolated(endWeights, newTokenTargetWeights);
+    }
+
+    function assembleFinalizedTokens(
+        IERC20[] memory tokens,
+        uint256[] memory currentTokenWeights,
+        mapping(IERC20 => bytes32) storage tokenState
+    ) external returns (IERC20[] memory finalizedTokens) {
+        uint256 numTokens = tokens.length;
+
+        IERC20[] memory removeTokensContainer = new IERC20[](numTokens);
+        uint8 removeTokensCounter;
+
+        for (uint8 i = 0; i < numTokens; i++) {
+            // check if token should be removed
+            // TODO: check for flag
+            if (currentTokenWeights[i] < Math.add(_INITIAL_WEIGHT, _TOLERANCE)) {
+                removeTokensContainer[removeTokensCounter] = tokens[i];
+                removeTokensCounter++;
+            }
+        }
+
+        finalizedTokens = shrinkArray(removeTokensContainer, removeTokensCounter);
+
+        console.log(finalizedTokens.length);
+        console.log(address(finalizedTokens[0]));
+    }
+
+    function shrinkArray(IERC20[] memory tokenContainer, uint8 newLength)
+        internal
+        returns (IERC20[] memory shrinkedTokenList)
+    {
+        shrinkedTokenList = new IERC20[](newLength);
+
+        for (uint8 i = 0; i < newLength; i++) {
+            shrinkedTokenList[i] = tokenContainer[i];
+        }
     }
 }

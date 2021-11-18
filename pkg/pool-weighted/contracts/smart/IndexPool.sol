@@ -23,6 +23,8 @@ import "../utils/IndexPoolUtils.sol";
 import "./IIndexPool.sol";
 import "./ITokenHandler.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
@@ -95,6 +97,8 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
 
         tokenHandler = ITokenHandler(params.tokenHandler);
 
+        tokenHandler.setup(params.vault);
+
         _startGradualWeightChange(
             block.timestamp,
             block.timestamp,
@@ -143,8 +147,10 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
     ) internal virtual {
         uint256 normalizedSum;
         bytes32 tokenState;
+        uint256 endWeight;
+
         for (uint256 i = 0; i < endWeights.length; i++) {
-            uint256 endWeight = endWeights[i];
+            endWeight = endWeights[i];
             _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
             tokenState = tokenState
                 .insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET)
@@ -245,6 +251,9 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
     ) public override returns (uint256) {
         //cannot swap out uninitialized token
         _require(minBalances[swapRequest.tokenOut] == 0, Errors.UNINITIALIZED_TOKEN);
+        // check if residual amount for REMOVE_TOKEN should be send to tokenHandler
+        // TODO: proper check with removal flag
+        _require(_getNormalizedWeight(swapRequest.tokenOut) > _INITIAL_WEIGHT.add(_TOLERANCE), Errors.DISABLED_TOKEN);
 
         // check if uninitialized token will be swapped INTO the pool
         if (minBalances[swapRequest.tokenIn] != 0) {
@@ -262,17 +271,28 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
             } else {
                 currentBalanceTokenIn = minBalances[swapRequest.tokenIn];
             }
-            // check if residual amount for REMOVE_TOKEN should be send to tokenHandler
-            // TODO: proper check with removal flag
-        } else if (_getNormalizedWeight(swapRequest.tokenOut) < _INITIAL_WEIGHT.add(_TOLERANCE)) {
-            uint256 returnAmount = super.onSwap(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
-            (uint256 totalAmount, , , ) = getVault().getPoolTokenInfo(getPoolId(), swapRequest.tokenOut);
-            uint256 residualAmount = totalAmount.sub(returnAmount);
-
-            return returnAmount;
-        } else {
-            return super.onSwap(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
         }
+
+        return super.onSwap(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+    }
+
+    function removeFinalizedTokens() public {
+        IVault vault = getVault();
+        (IERC20[] memory tokens, , ) = vault.getPoolTokens(getPoolId());
+        IERC20[] memory removeTokens = IndexPoolUtils.assembleFinalizedTokens(
+            tokens,
+            _getNormalizedWeights(),
+            _tokenState
+        );
+
+        uint256[] memory removeAmounts = new uint256[](removeTokens.length);
+
+        for (uint8 i; i < removeTokens.length; i++) {
+            (uint256 cash, , , ) = vault.getPoolTokenInfo(getPoolId(), removeTokens[i]);
+            removeAmounts[i] = cash;
+        }
+
+        tokenHandler.withdrawTokensFromVault(removeTokens, removeAmounts);
     }
 
     /// @dev Initiates the weight change to the original target weight of initialized token
