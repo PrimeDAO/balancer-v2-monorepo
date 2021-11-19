@@ -59,7 +59,7 @@ const round = (num: any, places: any) => {
   num = parseFloat(num);
   places = places ? parseInt(places, 10) : 0;
   if (places > 0) {
-    let length = places;
+    const length = places;
     places = '1';
     for (let i = 0; i < length; i++) {
       places += '0';
