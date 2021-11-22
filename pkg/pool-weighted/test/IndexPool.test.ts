@@ -1050,7 +1050,7 @@ describe('IndexPool', function () {
           });
 
           it('sets the correct rebalancing period', async () => {
-            const maxWeightDifference = calculateMaxWeightDifference(desiredWeightsBN, [...originalWeightsBN, fp(0)]);
+            const maxWeightDifference = calculateMaxWeightDifference(expectedEndWeights, [...originalWeightsBN, fp(0)]);
             const time = getTimeForWeightChange(maxWeightDifference);
             const startTime = args.startTime;
             const endTime = args.endTime;
