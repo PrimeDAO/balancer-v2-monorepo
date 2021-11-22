@@ -3,6 +3,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from '@ethersproject/contracts';
 import { fp } from '../../../pvt/helpers/src/numbers';
+import { getExpectedWeights, getDecimalBetween, getRandomBaseWeights } from './utils/WeightCalculationUtil.test';
 
 const {
   utils: { parseEther },
@@ -10,64 +11,23 @@ const {
 
 const HUNDRED_PERCENT = BigNumber.from(10).pow(18);
 
-const getTotalWeight = (weights: BigNumber[]): BigNumber =>
-  weights.reduce((acc, curr) => acc.add(curr), BigNumber.from(0));
-
-const percentage = (a: BigNumber, b: BigNumber): BigNumber => a.mul(HUNDRED_PERCENT).div(b);
-
-const getExpectedWeights = (baseWeightsNumbers: number[], fixWeightsNumbers: number[]): BigNumber[] => {
-  const baseWeights = baseWeightsNumbers.map((w) => fp(w));
-  const fixWeights = fixWeightsNumbers.map((w) => fp(w));
-
-  let totalDenormalizedBaseWeight = BigNumber.from(0);
-  let totalDenormalizedFixedWeight = BigNumber.from(0);
-
-  for (let i = 0; i < baseWeights.length; i++) {
-    totalDenormalizedFixedWeight = totalDenormalizedFixedWeight.add(fixWeights[i]);
-    if (fixWeights[i].isZero()) {
-      totalDenormalizedBaseWeight = totalDenormalizedBaseWeight.add(baseWeights[i]);
-    }
-  }
-
-  const delta = HUNDRED_PERCENT.sub(totalDenormalizedBaseWeight).sub(totalDenormalizedFixedWeight).abs();
-
-  const finalWeights = baseWeights.map((initialBaseWeight: BigNumber, idx: number) => {
-    if (!fixWeights[idx].isZero()) return fixWeights[idx];
-
-    const adjustedBaseWeight = totalDenormalizedBaseWeight.add(totalDenormalizedFixedWeight).gt(HUNDRED_PERCENT)
-      ? initialBaseWeight.sub(
-          percentage(initialBaseWeight, totalDenormalizedBaseWeight).mul(delta).div(HUNDRED_PERCENT)
-        )
-      : initialBaseWeight.add(
-          percentage(initialBaseWeight, totalDenormalizedBaseWeight).mul(delta).div(HUNDRED_PERCENT)
-        );
-
-    return adjustedBaseWeight;
-  });
-
-  return finalWeights;
-};
-
-const getDecimalBetween = (min: number, max: number): number =>
-  parseFloat((Math.random() * (max - min) + min).toFixed(4));
-
 const getIntegerBetween = (min: number, max: number): number => Math.floor(Math.random() * max + min);
 
-// generates random normalized base weights
-const getRandomBaseWeights = (numWeights: number): number[] => {
+// generates random baseWeights and fixedWeights for the case where the weights of existing tokens in a pool are changed
+const setupAdjustTokens = (numWeights: number) => {
+  const baseWeights = getRandomBaseWeights(numWeights);
+  const numberAdjustTokens = getIntegerBetween(1, numWeights - 1);
+  const fixedWeights = new Array(numWeights).fill(0);
+
   let residual = 1;
-  const baseWeights = [];
-
-  for (let i = 0; i < numWeights - 1; i++) {
-    const weight = getDecimalBetween(Number.MIN_VALUE, residual / 2);
-
-    residual -= weight;
-    baseWeights.push(weight);
+  for (let i = 0; i < numberAdjustTokens; i++) {
+    const newWeight = getDecimalBetween(Number.MIN_VALUE, residual / 2);
+    fixedWeights[i] = newWeight;
+    baseWeights[i] = 0;
+    residual -= newWeight;
   }
 
-  baseWeights.push(residual);
-
-  return baseWeights;
+  return { baseWeights, fixedWeights };
 };
 
 // generates random baseWeights and fixedWeights for the case where one or two new tokens are added
@@ -89,28 +49,21 @@ const setupNewTokens = (numWeights: number) => {
   return { baseWeights, fixedWeights };
 };
 
-// generates random baseWeights and fixedWeights for the case where the weights of existing tokens in a pool are changed
-const setupAdjustTokens = (numWeights: number) => {
-  const baseWeights = getRandomBaseWeights(numWeights);
-  const numberAdjustTokens = getIntegerBetween(1, numWeights - 1);
-  const fixedWeights = new Array(numWeights).fill(0);
-
-  let residual = 1;
-  for (let i = 0; i < numberAdjustTokens; i++) {
-    const newWeight = getDecimalBetween(Number.MIN_VALUE, residual / 2);
-    fixedWeights[i] = newWeight;
-    baseWeights[i] = 0;
-    residual -= newWeight;
-  }
-
-  return { baseWeights, fixedWeights };
-};
+const getTotalWeight = (weights: BigNumber[]): BigNumber =>
+  weights.reduce((acc, curr) => acc.add(curr), BigNumber.from(0));
 
 describe('IndexPoolUtils', function () {
   let indexPoolUtilsInstance: Contract;
 
   beforeEach(async () => {
-    const indexPoolUtilsFactory = await ethers.getContractFactory('MockIndexPoolUtils');
+    const indexPoolUtilsLibraryFactory = await ethers.getContractFactory('IndexPoolUtils');
+    const indexPoolUtilsLibraryInstance = await indexPoolUtilsLibraryFactory.deploy();
+
+    const indexPoolUtilsFactory = await ethers.getContractFactory('MockIndexPoolUtils', {
+      libraries: {
+        IndexPoolUtils: indexPoolUtilsLibraryInstance.address,
+      },
+    });
     indexPoolUtilsInstance = await indexPoolUtilsFactory.deploy();
     await indexPoolUtilsInstance.deployed();
   });
