@@ -959,6 +959,7 @@ describe('IndexPool', function () {
           );
         });
       });
+    });
 
     context('when adding multiple tokens at once', () => {
       const MAX_TOKENS_TO_ADD = 15;
