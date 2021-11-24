@@ -12,6 +12,7 @@
   - [x] uint256[] calldata desiredWeights
 - [x] input validation:
   - [x] it reverts if input arrays are malformed
+- [x] can only be called by controller
 
 #### 1.1.2. Cases
 
@@ -30,6 +31,7 @@
 
 - [x] there is public function `reweighTokens`
 - [x] input validation
+- [x] can only be called by controller
 
 #### 1.2.2. Cases
 
