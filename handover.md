@@ -6,10 +6,10 @@
 
 #### 1.1.1. General
 
-- [x] there is public function `reweighTokens`
-- [x] it takes the following arguments:
-  - [x] IERC20[] calldata tokens
-  - [x] uint256[] calldata desiredWeights
+- [x] there is public function `reweighTokens`
+- [x] it takes the following arguments:
+  - [x] IERC20[] calldata tokens
+  - [x] uint256[] calldata desiredWeights
 - [x] input validation:
   - [x] it reverts if input arrays are malformed
 - [x] can only be called by controller
