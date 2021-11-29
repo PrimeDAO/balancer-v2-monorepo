@@ -6,19 +6,19 @@
 
 #### 1.1.1. General
 
-- [x] there is public function `reweighTokens`
-- [x] it takes the following arguments:
-  - [x] IERC20[] calldata tokens
-  - [x] uint256[] calldata desiredWeights
+- [x] there is public function `reweighTokens`
+- [x] it takes the following arguments:
+  - [x] IERC20[] calldata tokens
+  - [x] uint256[] calldata desiredWeights
 - [x] input validation:
   - [x] it reverts if input arrays are malformed
 - [x] can only be called by controller
 
 #### 1.1.2. Cases
 
-- [x] base case: the fn parameters contain target weights for all pool tokens, in the pool there is no uninitialized token and no token to be removed atm
-  - [x] a new rebalancing process is initialized using the current weights as start weights and the target weights as end weights
-  - [x] the endTime is calculated such that the weight change per day for the token with the largest absolute weight change is 1% per day (consequently the weight change for the other tokens is smaller than that)
+- [x] base case: the fn parameters contain target weights for all pool tokens, in the pool there is no uninitialized token and no token to be removed atm
+  - [x] a new rebalancing process is initialized using the current weights as start weights and the target weights as end weights
+  - [x] the endTime is calculated such that the weight change per day for the token with the largest absolute weight change is 1% per day (consequently the weight change for the other tokens is smaller than that)
 - [ ] case: the fn parameters contain target weights for all pool tokens, there is an uninitialized token in the pool
   - [ ] only the target weights of the initialized tokens are changed, the uninitialized token stays at 1%
   - [ ] the new target weight of the uninitialized token is stored for later use
@@ -68,4 +68,8 @@ Balancer is currently working on a new smart pool implementation, the `Investmen
 
 ### 2.3. Storage
 
-In the current implementation the pool stores token specific information as a mapping `address => bytes32`. Within the `bytes32` most of the state of the respective token is stored. This includes the token's `startWeight`, `endWeight`, `decimals`. For an uninitialized (new) token this also includes its `targetWeight`, for a token to be removes its `TODO`
+In the current implementation the pool stores token specific information as a mapping `address => bytes32`. Within the `bytes32` most of the state of the respective token is stored. This includes the token's `startWeight`, `endWeight`, `decimals`. For an uninitialized (new) token this also includes its `targetWeight`, for a token to be removes its `TODO`. What is not currently stored within this tokenState is the token's `minimumBalance`. For this data, there exists a separate mapping. A desirable **optimization** would definitely to include the `minimumBalance` within the more general token state to save on gas costs.
+
+### 2.4. Contract Size
+
+The base contract that the `IndexPool` inherits from, `BaseWeightedPool`, is already relatively large in size. Due to the way params will be passed from the controller to the reweighing and reindexing functions, the `IndexPool`'s core logic requires relatively many loops/arrays. To save on contract size, we loaded off much of this computation into a library with external function visibility, `IndexPoolUtils`. For the yet outstanding implementations, it will likely be necessary to follow this approach. In this context it might be worth to have another look if the way functions are split between the pool and the libraray can be optimized. The tradeoffs here are that offloading a function into the library reduces the pool's contract size, but on the other hand makes each call to this funciton more expensive. So ideally, one would like to have the functions that are complex (hence, large in code size) and that are called not so frequently to live in the library, whereas "small" functions that are called frequently should rather reside in the pool implementation itself.
