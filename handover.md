@@ -6,19 +6,19 @@
 
 #### 1.1.1. General
 
-- [x] there is public function `reweighTokens`
-- [x] it takes the following arguments:
-  - [x] IERC20[] calldata tokens
-  - [x] uint256[] calldata desiredWeights
+- [x] there is public function `reweighTokens`
+- [x] it takes the following arguments:
+  - [x] IERC20[] calldata tokens
+  - [x] uint256[] calldata desiredWeights
 - [x] input validation:
   - [x] it reverts if input arrays are malformed
 - [x] can only be called by controller
 
 #### 1.1.2. Cases
 
-- [x] base case: the fn parameters contain target weights for all pool tokens, in the pool there is no uninitialized token and no token to be removed atm
-  - [x] a new rebalancing process is initialized using the current weights as start weights and the target weights as end weights
-  - [x] the endTime is calculated such that the weight change per day for the token with the largest absolute weight change is 1% per day (consequently the weight change for the other tokens is smaller than that)
+- [x] base case: the fn parameters contain target weights for all pool tokens, in the pool there is no uninitialized token and no token to be removed atm
+  - [x] a new rebalancing process is initialized using the current weights as start weights and the target weights as end weights
+  - [x] the endTime is calculated such that the weight change per day for the token with the largest absolute weight change is 1% per day (consequently the weight change for the other tokens is smaller than that)
 - [ ] case: the fn parameters contain target weights for all pool tokens, there is an uninitialized token in the pool
   - [ ] only the target weights of the initialized tokens are changed, the uninitialized token stays at 1%
   - [ ] the new target weight of the uninitialized token is stored for later use
@@ -29,7 +29,7 @@
 
 #### 1.2.1. General
 
-- [x] there is public function `reweighTokens`
+- [x] there is public function `reweighTokens`
 - [x] input validation
 - [x] can only be called by controller
 
