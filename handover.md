@@ -58,10 +58,14 @@
 
 ## 2. Documentation
 
-### 2.1. General V2 design
+### 2.1. High level Balancer V2 architecture
 
 Balancer V2's architecture builds on the premise that pool and vault are separate contracts. The vault holds all tokens, keeps a registry of available pools and their respective token balances. If a user makes a basic interaction with a pool such as swapping, joinning or exiting, this happens through an interaction with the vault (thereby the user specifies with which pool they want to interact). The vault will forward the interaction to the respective pool, whose implementation determines the exact swap, join, or exit logic (e.g. how much a user will receive for a given swap). This division between pool and vault has significant implications on the possible design space for the `IndexPool`.
 
 ### 2.2. Starting point: InvestmentPool
 
-Balancer is currently working on a new smart pool implementation, the `InvestmentPool`. This pool is meant to cater for a large amount of tokens, to allow for reweighing and more. However, the InvestmentPool is work in progress. The InvestmentPool was used as starting point for the IndexPool implementation, since it shares many of its desired features.
+Balancer is currently working on a new smart pool implementation, the `InvestmentPool`. This pool is meant to cater for a large amount of tokens, to allow for reweighing and more. However, the InvestmentPool is work in progress. The already existing code for the InvestmentPool was used as starting point for the IndexPool implementation, since it shares many of its desired features.
+
+### 2.3. Storage
+
+In the current implementation the pool stores token specific information as a mapping `address => bytes32`. Within the `bytes32` most of the state of the respective token is stored. This includes the token's `startWeight`, `endWeight`, `decimals`. For an uninitialized (new) token this also includes its `targetWeight`, for a token to be removes its `TODO`
