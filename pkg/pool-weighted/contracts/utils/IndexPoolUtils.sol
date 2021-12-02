@@ -171,7 +171,7 @@ library IndexPoolUtils {
             for (uint8 i = 0; i < tokens.length; i++) {
                 IERC20 token = IERC20(tokens[i]);
                 bytes32 currentTokenState = tokenState[token];
-                if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) != 0) {
+                if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) !=  _NORMAL_FLAG) {
                     removedTokensLength--;
                     tokenState[token] = currentTokenState.insertUint5(_SAVE_FLAG, _REMOVE_FLAG_OFFSET);
                 }
