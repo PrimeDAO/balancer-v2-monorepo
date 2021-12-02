@@ -141,6 +141,7 @@ library IndexPoolUtils {
     /// @return finalFixedWeights Weights that are fixed and that the other non-fixed weights need to be adjusted for.
     /// @return newTokenTargetWeights contains only the final target weights for uninitialized tokens (else zero).
     /// @return newDesiredWeights contains only the final desired weights for tokens.
+    /// @return oldTokens contains only the old pool token addresses (no zeros!).
     /// @return newTokens contains only the new pool token addresses (no zeros!).
     /// @return finalTokens contains final pool token addresses (no zeros!).
     function assembleReindexParams(
@@ -171,7 +172,7 @@ library IndexPoolUtils {
             for (uint8 i = 0; i < tokensLength; i++) {
                 IERC20 token = IERC20(tokens[i]);
                 bytes32 currentTokenState = tokenState[token];
-                if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) !=  _NORMAL_FLAG) {
+                if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) != _NORMAL_FLAG) {
                     removedTokensLength--;
                     tokenState[token] = currentTokenState.insertUint5(_SAVE_FLAG, _REMOVE_FLAG_OFFSET);
                 }
