@@ -131,6 +131,16 @@ library IndexPoolUtils {
         return FixedPoint.mulUp(_UNINITIALIZED_WEIGHT, incentivizationFactor);
     }
 
+    function removeToken(IERC20[] memory tokens, IERC20 token, uint256 tokenLen) internal returns(uint256){
+        for(uint8 j = 0; j < tokenLen; j++){
+            if(tokens[j] == token){
+                tokens[j] = tokens[tokenLen - 1];
+                return(tokenLen-1);
+            }
+        }
+        return tokenLen;
+    }
+
     /// @dev Assembles params to be used for reindex call.
     /// @param tokens List of pool tokens.
     /// @param oldTokens List of tokens which were already in pool.
@@ -171,11 +181,7 @@ library IndexPoolUtils {
             uint256 tokensLength = tokens.length;
             for (uint8 i = 0; i < tokensLength; i++) {
                 IERC20 token = IERC20(tokens[i]);
-                bytes32 currentTokenState = tokenState[token];
-                if (currentTokenState.decodeUint64(_START_WEIGHT_OFFSET) != _NORMAL_FLAG) {
-                    removedTokensLength--;
-                    tokenState[token] = currentTokenState.insertUint5(_SAVE_FLAG, _REMOVE_FLAG_OFFSET);
-                }
+                removedTokensLength = removeToken(oldTokens, token, removedTokensLength);
             }
             // the weights that are fixed and that the other tokens need to be adjusted by
             initialFixedWeights = new uint256[](tokensLength + removedTokensLength);
@@ -186,18 +192,14 @@ library IndexPoolUtils {
             finalTokens = new IERC20[](tokensLength + removedTokensLength);
 
             uint8 j = 0;
-            for (uint8 i = 0; i < oldTokens.length; i++) {
+            for (uint8 i = 0; i < removedTokensLength; i++) {
                 IERC20 token = IERC20(oldTokens[i]);
                 bytes32 currentTokenState = tokenState[token];
-                if (currentTokenState.decodeUint5(_REMOVE_FLAG_OFFSET) != _SAVE_FLAG) {
-                    tokenState[token] = currentTokenState.insertUint5(_REMOVE_FLAG, _REMOVE_FLAG_OFFSET);
-                    finalTokens[tokensLength + j] = token;
-                    finalFixedWeights[tokensLength + j] = _INITIAL_WEIGHT;
-                    newDesiredWeights[tokensLength + j] = 0;
-                    j++;
-                } else {
-                    tokenState[token] = currentTokenState.insertUint5(_NORMAL_FLAG, _REMOVE_FLAG_OFFSET);
-                }
+                tokenState[token] = currentTokenState.insertUint5(_REMOVE_FLAG, _REMOVE_FLAG_OFFSET);
+                finalTokens[tokensLength + j] = token;
+                finalFixedWeights[tokensLength + j] = _INITIAL_WEIGHT;
+                newDesiredWeights[tokensLength + j] = 0;
+                j++;
             }
         }
 
