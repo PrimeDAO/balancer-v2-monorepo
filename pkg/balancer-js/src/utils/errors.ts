@@ -130,6 +130,7 @@ const balancerErrorCodes: Record<string, string> = {
   '602': 'INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT',
   '700': 'INVALID_ZERO_MINIMUM_BALANCE',
   '701': 'UNINITIALIZED_TOKEN',
+  '702': 'REMOVED_TOKEN',
 };
 
 export class BalancerErrors {
