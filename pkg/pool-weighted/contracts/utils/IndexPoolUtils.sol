@@ -132,14 +132,14 @@ library IndexPoolUtils {
     }
 
     function removeToken(
-        IERC20[] memory tokens, 
-        IERC20 token, 
+        IERC20[] memory tokens,
+        IERC20 token,
         uint256 tokenLen
-    ) internal returns(uint256){
+    ) internal returns (uint256) {
         for (uint8 j = 0; j < tokenLen; j++) {
             if (tokens[j] == token) {
                 tokens[j] = tokens[tokenLen - 1];
-                return(tokenLen - 1);
+                return (tokenLen - 1);
             }
         }
         return tokenLen;
