@@ -955,7 +955,7 @@ describe('IndexPool', function () {
           const limit = 0; // Minimum amount out
           const deadline = MAX_UINT256;
           await expect(vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline)).to.be.revertedWith(
-            'BAL#702'
+            'REMOVED_TOKEN'
           );
         });
       });
