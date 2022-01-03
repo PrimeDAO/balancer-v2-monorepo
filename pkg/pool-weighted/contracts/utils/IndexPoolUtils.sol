@@ -27,8 +27,7 @@ library IndexPoolUtils {
     uint256 private constant _REMOVE_FLAG_OFFSET = 138;
 
     uint256 private constant _NORMAL_FLAG = 0;
-    uint256 private constant _SAVE_FLAG = 1;
-    uint256 private constant _REMOVE_FLAG = 2;
+    uint256 private constant _REMOVE_FLAG = 1;
 
     /// @dev Scales baseWeights up/down so that resulting weights array is normalized.
     /// @param _baseWeights Array with weights of tokens. Those that are non-zero need to be scaled.

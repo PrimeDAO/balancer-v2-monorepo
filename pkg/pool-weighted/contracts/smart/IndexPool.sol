@@ -67,8 +67,7 @@ contract IndexPool is BaseWeightedPool, ReentrancyGuard, IIndexPool {
     uint256 private constant _REMOVE_FLAG_OFFSET = 138;
 
     uint256 private constant _NORMAL_FLAG = 0;
-    uint256 private constant _SAVE_FLAG = 1;
-    uint256 private constant _REMOVE_FLAG = 2;
+    uint256 private constant _REMOVE_FLAG = 1;
 
     uint256 private constant _SECONDS_IN_A_DAY = 86400;
 
